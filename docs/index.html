@@ -121,6 +121,27 @@
   .tl .dot { position: absolute; top: 1.3rem; width: .55rem; height: .55rem; border-radius: 50%; background: var(--ink); transform: translateX(-50%); }
   .tl .dot.small { width: .4rem; height: .4rem; background: var(--graphite); }
 
+
+  /* threads (corkboard arranged by label) */
+  .threads { display: grid; grid-template-columns: 3rem repeat(3, 1fr); column-gap: 1.25rem; row-gap: .9rem; position: relative; }
+  .threads .th { font-size: .95rem; color: var(--graphite); padding-bottom: .4rem; border-bottom: 1px solid var(--rule); }
+  .threads .th.first { grid-column: 1; }
+  .threads .ord { font-size: .85rem; color: var(--graphite); align-self: center; }
+  .threads .lane { position: relative; }
+  .threads .lane::before { content: ""; position: absolute; left: 50%; top: -.9rem; bottom: -.9rem; width: 3px; background: var(--rule); }
+  .threads .lane.mara::before { background: #E3C6C3; }
+  .threads .lane.tom::before { background: #C9D2E2; }
+  .threads .lane.town::before { background: #CFDCCF; }
+  .threads .lane.last::before { bottom: 0; }
+  .threads .card { position: relative; margin: 0; border-left: 3px solid var(--rule); }
+  .threads .card.mara { border-left-color: #B65A52; }
+  .threads .card.tom { border-left-color: #4C6A9A; }
+  .threads .card.town { border-left-color: #5E8A5C; }
+  .threads .card.ghost { border-style: dashed; background: transparent; box-shadow: none; color: var(--graphite); }
+  .axis { display: flex; gap: 1rem; align-items: center; font-size: .95rem; color: var(--graphite); }
+  .axis span { border: 1px solid var(--rule); border-radius: 3px; padding: .05rem .5rem; background: #fff; }
+  .axis span.on { color: var(--ink); border-color: var(--ink); }
+
   /* research */
   .excerpt p { margin: 0 0 .9rem; max-width: 42ch; }
   .excerpt p:last-child { margin: 0; }
@@ -175,6 +196,7 @@
     .split, .cork { grid-template-columns: 1fr; }
     .split > div + div { border-left: 0; border-top: 1px solid var(--rule); }
     .tl .track { height: 5.4rem; }
+    .threads { grid-template-columns: 2rem repeat(3, 1fr); column-gap: .5rem; }
   }
   @media (max-width: 720px) {
     .compare .bar, .compare .panes, dl.changes, .two { grid-template-columns: 1fr; }
@@ -224,10 +246,45 @@
 
 
   <section class="feature">
-    <h2>Pin a scene to a date.</h2>
-    <p>Give a note a story date and it appears on the timeline. Scenes, and anything else with a date, such as a birth, a war, a letter that was never sent, sit on the same ruler. A second track shows when you wrote each scene, from its snapshots, so you can see the book's time and your own side by side. Drag a pin and the date in the note changes; there is no second copy of anything.</p>
-    <div class="panel" aria-label="Timeline example">
-      <div class="bar"><strong>Timeline</strong><span>1896 to 1899, story time</span></div>
+    <h2>Arrange a chapter by thread.</h2>
+    <p>This is Scrivener's corkboard arranged by label, and it is the view writers miss most. One thread per label: a point-of-view character, a plot line, a location. The chapter's scenes run down the axis in manuscript order, each card sitting on the thread that matches its label. Drag a card up or down and the scene moves in the book. Drag it sideways and its label changes. The picture is the order of events and who carries them, at a glance.</p>
+    <div class="panel" aria-label="Threads example, a chapter arranged by label">
+      <div class="bar"><strong>Chapter 1</strong><span class="axis">Axis <span class="on">Manuscript order</span><span>Story date</span></span></div>
+      <div class="body threads">
+        <div class="th first"></div>
+        <div class="th"><i class="lab red"></i>Mara</div>
+        <div class="th"><i class="lab blue"></i>Tom</div>
+        <div class="th"><i class="lab green"></i>The town</div>
+
+        <div class="ord">1</div>
+        <div class="lane mara"><div class="card mara"><div class="t">The Letter</div><div class="s">Mara finds the letter. Reads it standing.</div></div></div>
+        <div class="lane tom"></div>
+        <div class="lane town"></div>
+
+        <div class="ord">2</div>
+        <div class="lane mara"><div class="card mara"><div class="t">The Tin</div><div class="s">She decides not to open it. Then she opens it.</div></div></div>
+        <div class="lane tom"></div>
+        <div class="lane town"></div>
+
+        <div class="ord">3</div>
+        <div class="lane mara"></div>
+        <div class="lane tom"><div class="card tom"><div class="t">Winter Fair</div><div class="s">Tom sees the tin on the stall and says nothing.</div></div></div>
+        <div class="lane town"></div>
+
+        <div class="ord">4</div>
+        <div class="lane mara"></div>
+        <div class="lane tom"></div>
+        <div class="lane town"><div class="card town"><div class="t">Flood</div><div class="s">The water reaches the chapel steps by nightfall.</div></div></div>
+
+        <div class="ord">5</div>
+        <div class="lane mara last"><div class="card mara"><div class="t">Return</div><div class="s">The house is smaller than she remembers.</div></div></div>
+        <div class="lane tom last"></div>
+        <div class="lane town last"><div class="card ghost"><div class="t">Drop here</div><div class="s">to move Return to the town's thread</div></div></div>
+      </div>
+    </div>
+    <p style="margin-top:1.5rem">Where Longhand goes further: switch the axis from manuscript order to story date and the same threads become a timeline of when things happen, with a second track for when you wrote them. Notes that are not scenes, a war, a birth, a letter never sent, can sit on it too. Nothing new is stored; the board reads the same label and date fields as the inspector.</p>
+    <div class="panel" aria-label="The same board with the axis set to story date">
+      <div class="bar"><strong>Chapter 1</strong><span class="axis">Axis <span>Manuscript order</span><span class="on">Story date</span></span></div>
       <div class="body tl">
         <div class="ruler"><span>1896</span><span>1897</span><span>1898</span><span>1899</span></div>
         <div class="track">
@@ -236,13 +293,13 @@
           <div class="pin" style="left:34%"><span class="tag"><i class="lab red"></i>The Letter</span></div>
           <div class="pin" style="left:47%"><span class="tag"><i class="lab red"></i>The Tin</span></div>
           <div class="pin" style="left:63%"><span class="tag"><i class="lab blue"></i>Winter Fair</span></div>
-          <div class="pin event" style="left:78%"><span class="tag">Flood</span></div>
-          <div class="pin" style="left:90%"><span class="tag"><i class="lab green"></i>Return</span></div>
+          <div class="pin" style="left:78%"><span class="tag"><i class="lab green"></i>Flood</span></div>
+          <div class="pin" style="left:90%"><span class="tag"><i class="lab red"></i>Return</span></div>
         </div>
         <div class="track">
           <span class="name">Written</span>
-          <div class="dot small" style="left:34%" title="First draft, 2020"></div>
-          <div class="dot" style="left:36%" title="Second draft, 2021"></div>
+          <div class="dot small" style="left:34%"></div>
+          <div class="dot" style="left:36%"></div>
           <div class="dot small" style="left:47%"></div>
           <div class="dot small" style="left:63%"></div>
           <div class="dot" style="left:66%"></div>
@@ -272,7 +329,7 @@
 
   <section class="feature">
     <h2>See the book as cards.</h2>
-    <p>The corkboard makes an index card from each scene's synopsis, coloured by label. Arrange the columns by status and it is a kanban board; by label and it is the plot threads side by side; by chapter and it is the binder laid flat. Drag a card and the scene's order or status changes in its frontmatter. There is nothing to keep in sync because there is only one copy.</p>
+    <p>The same cards, arranged another way. The corkboard makes an index card from each scene's synopsis, coloured by label. As a grid it is the chapter laid flat. As columns by status it is a kanban board. As threads by label it is the view above. Drag a card and the scene's order, status, or label changes in its frontmatter. There is nothing to keep in sync because there is only one copy.</p>
     <div class="panel" aria-label="Corkboard example">
       <div class="bar"><strong>Corkboard</strong><span>Columns by status</span></div>
       <div class="body cork">
@@ -343,7 +400,7 @@
       <div><dt>The file tree becomes a binder.</dt><dd>An ordered manuscript you drag to reorder. Folders are chapters, folder notes are chapter text.</dd></div>
       <div><dt>The properties panel becomes an inspector.</dt><dd>Synopsis, label, status, notes, keywords, bookmarks, and attached research beside what you are writing.</dd></div>
       <div><dt>Raw commits become named snapshots.</dt><dd>Per document, with compare and safe restore.</dd></div>
-      <div><dt>Three plugins become one view.</dt><dd>Corkboard, kanban, and timeline read the same synopsis, label, status, and date fields.</dd></div>
+      <div><dt>Three plugins become one board.</dt><dd>Grid, kanban columns, and label threads are arrangements of the same cards, reading the same synopsis, label, status, and date fields.</dd></div>
       <div><dt>Research stays with the scene.</dt><dd>PDFs, images, and notes attached to the document you have open. Highlights link back.</dd></div>
       <div><dt>Compile means a manuscript.</dt><dd>Presets for short story, novel, poem, essay. Docx, pdf, epub, or Markdown. Your files are untouched.</dd></div>
       <div><dt>Any image becomes a map.</dt><dd>Pins link places to scenes and back. Stored as frontmatter on the map's note.</dd></div>
