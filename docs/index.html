@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Longhand, the writing studio for Obsidian</title>
+<meta name="description" content="Binder, snapshots with side-by-side compare, inspector, corkboard, timeline, research, and compile for Obsidian. Files you own, git underneath.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F3F4F1;
+    --paper-deep: #E9EBE6;
+    --ink: #1E2432;
+    --graphite: #676B72;
+    --rule: #CFD2CC;
+    --removed: #A8322B;
+    --removed-wash: #F4DEDC;
+    --added: #2F6F4E;
+    --added-wash: #DCEBE2;
+    --measure: 66ch;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--paper); color: var(--ink); }
+  body {
+    margin: 0;
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    font-optical-sizing: auto;
+    font-size: 1.125rem;
+    line-height: 1.55;
+  }
+  a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; }
+  header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 1.5rem 0 1rem; border-bottom: 1px solid var(--rule);
+  }
+  header .name { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; }
+  header nav a { margin-left: 1.5rem; color: var(--graphite); }
+  h1 {
+    font-size: clamp(2.4rem, 6vw, 4.5rem);
+    line-height: 1.02; font-weight: 500; letter-spacing: -0.02em;
+    margin: 3.5rem 0 1.25rem; max-width: 18ch;
+  }
+  .lede { font-size: 1.35rem; max-width: var(--measure); margin: 0 0 3rem; color: var(--ink); }
+  .lede em { font-style: italic; }
+
+  /* the compare panel */
+  .compare {
+    border: 1px solid var(--rule); background: #FBFBF9;
+    margin: 0 0 4rem;
+  }
+  .compare .bar {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border-bottom: 1px solid var(--rule); color: var(--graphite); font-size: 1rem;
+  }
+  .compare .bar div { padding: .7rem 1.25rem; }
+  .compare .bar div + div { border-left: 1px solid var(--rule); }
+  .compare .bar strong { color: var(--ink); font-weight: 500; }
+  .compare .panes { display: grid; grid-template-columns: 1fr 1fr; }
+  .compare .pane { padding: 1.5rem 1.25rem 1.75rem; }
+  .compare .pane + .pane { border-left: 1px solid var(--rule); }
+  .compare p { margin: 0 0 1rem; max-width: 40ch; }
+  .compare p:last-child { margin-bottom: 0; }
+  del, ins { text-decoration: none; padding: 0 .08em; border-radius: 2px; transition: background-color .6s ease, color .6s ease; }
+  del { color: var(--removed); background: var(--removed-wash); }
+  ins { color: var(--added); background: var(--added-wash); }
+  .compare.quiet del, .compare.quiet ins { background: transparent; color: inherit; }
+  .compare .foot {
+    border-top: 1px solid var(--rule); padding: .7rem 1.25rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .85rem; color: var(--graphite);
+    white-space: nowrap; overflow-x: auto;
+  }
+  .compare .foot span { color: var(--ink); }
+
+  section { padding: 0 0 3.5rem; }
+  h2 { font-size: 1.9rem; font-weight: 500; letter-spacing: -0.01em; margin: 0 0 1rem; }
+  section > p { max-width: var(--measure); margin: 0 0 1rem; }
+  dl.changes { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem 3rem; margin: 1.5rem 0 0; max-width: 60rem; }
+  dl.changes div { border-top: 1px solid var(--rule); padding-top: .75rem; }
+  dl.changes dt { font-weight: 600; margin: 0 0 .2rem; }
+  dl.changes dd { margin: 0; color: var(--graphite); }
+  ul.plain { list-style: none; padding: 0; margin: 1rem 0 0; max-width: var(--measure); }
+  ul.plain li { padding: .55rem 0; border-top: 1px solid var(--rule); }
+  ul.plain li:first-child { border-top: 0; padding-top: 0; }
+  pre {
+    background: var(--paper-deep); padding: 1rem 1.25rem; overflow-x: auto;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .92rem; line-height: 1.5;
+    max-width: 60rem; margin: 1rem 0;
+  }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; max-width: 60rem; }
+  .two h3 { font-size: 1.25rem; font-weight: 600; margin: 0 0 .5rem; }
+  .two p { margin: 0 0 .75rem; color: var(--graphite); }
+  footer { border-top: 1px solid var(--rule); padding: 1.5rem 0 3rem; color: var(--graphite); font-size: 1rem; }
+  @media (max-width: 720px) {
+    .compare .bar, .compare .panes, dl.changes, .two { grid-template-columns: 1fr; }
+    .compare .bar div + div, .compare .pane + .pane { border-left: 0; border-top: 1px solid var(--rule); }
+    header nav a { margin-left: 1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { del, ins { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="name">Longhand</div>
+    <nav>
+      <a href="https://github.com/grassclaw/longhand">Plugin</a>
+      <a href="https://github.com/grassclaw/scrivener-to-obsidian">Importer</a>
+      <a href="https://github.com/grassclaw/longhand/blob/main/docs/spec.md">Spec</a>
+    </nav>
+  </header>
+
+  <h1>The writing studio for Obsidian.</h1>
+  <p class="lede">Binder, snapshots with side-by-side compare, inspector, corkboard, timeline, research, and compile. One plugin with switchable modules. Everything it adds is stored as Markdown, frontmatter, and git commits, so <em>nothing needs Longhand to be read.</em></p>
+
+  <div class="compare quiet" id="compare" aria-label="Example of comparing a snapshot with the live text">
+    <div class="bar">
+      <div><strong>First draft</strong>, snapshot taken 19 Jan 2020</div>
+      <div><strong>Now</strong>, editing</div>
+    </div>
+    <div class="panes">
+      <div class="pane">
+        <p>Mara found the letter <del>under the floorboard where her mother had always said nothing was hidden</del>. She read it twice <del>and then a third time</del>, standing, because sitting felt like agreeing to it.</p>
+        <p>Outside, the rain <del>had not stopped</del>.</p>
+      </div>
+      <div class="pane">
+        <p>Mara found the letter <ins>in the tin with the buttons, which was the one place her mother never looked</ins>. She read it twice, standing, because sitting felt like agreeing to it.</p>
+        <p>Outside, the rain <ins>kept its own counsel</ins>.</p>
+      </div>
+    </div>
+    <div class="foot"><span>snap(Manuscript/01 Part One/02 The Letter.md): First draft</span> &nbsp; Snapshot-Doc-Id: 9B2C1F7A… &nbsp; Word-Count: 61</div>
+  </div>
+
+  <section>
+    <h2>Write, snapshot, compare, restore.</h2>
+    <p>Before a risky edit, take a snapshot and give it a name. That is one git commit for one file, and you never see git. When the edit goes wrong, open the Snapshots tab: only this document's named snapshots are listed, not every auto-commit in the vault. Compare shows the old version beside the live text with changes tinted at the word level. Pull back a sentence, or restore the whole thing. Restore snapshots the current state first, so nothing is ever the last copy.</p>
+    <p>If you are coming from Scrivener, the importer replays every snapshot you ever took as history with its original title and date. You arrive with your past intact.</p>
+  </section>
+
+  <section>
+    <h2>What changes in Obsidian</h2>
+    <dl class="changes">
+      <div><dt>The file tree becomes a binder.</dt><dd>An ordered manuscript you drag to reorder. Folders are chapters, folder notes are chapter text.</dd></div>
+      <div><dt>The properties panel becomes an inspector.</dt><dd>Synopsis, label, status, notes, keywords, bookmarks, and attached research beside what you are writing.</dd></div>
+      <div><dt>Raw commits become named snapshots.</dt><dd>Per document, with compare and safe restore.</dd></div>
+      <div><dt>Three plugins become one view.</dt><dd>Corkboard, kanban, and timeline read the same synopsis, label, status, and date fields.</dd></div>
+      <div><dt>Research stays with the scene.</dt><dd>PDFs, images, and notes attached to the document you have open. Highlights link back.</dd></div>
+      <div><dt>Compile means a manuscript.</dt><dd>Presets for short story, novel, poem, essay. Docx, pdf, epub, or Markdown. Your files are untouched.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Works with how you already sync</h2>
+    <p>Longhand does not sync anything. Your vault keeps moving through iCloud, Dropbox, Obsidian Sync, Syncthing, or a git remote, whichever you use today. Snapshot history is stored as plain files inside the vault by default, so it travels with the vault to every device, including your phone. If you want real version control as well, turn on the git store: desktop only, and the repository is kept outside the synced folder so cloud sync never touches it.</p>
+  </section>
+
+  <section>
+    <h2>Get it</h2>
+    <div class="two">
+      <div>
+        <h3>Coming from Scrivener</h3>
+        <p>The importer turns a .scriv package into a vault that follows the Longhand spec, snapshots included. Your Scrivener project is never modified.</p>
+        <pre>go install github.com/grassclaw/scrivener-to-obsidian/cmd/scriv2obsidian@latest
+scriv2obsidian convert -out ~/Writing -git Novel.scriv</pre>
+      </div>
+      <div>
+        <h3>The plugin</h3>
+        <p>In design and early development. The spec, the importer, the plugin core, and the Snapshots module are open source and will stay that way. Convenience modules may carry a licence later; nothing that guards your data ever will.</p>
+        <p><a href="https://github.com/grassclaw/longhand">Follow the repo</a> to hear when there is a build to try.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>Longhand is built by grassclaw. MIT licensed. No accounts, no telemetry, no network calls.</footer>
+</div>
+<script>
+  // One motion moment: the diff tints in once the page has settled.
+  (function () {
+    var el = document.getElementById('compare');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { el.classList.remove('quiet'); return; }
+    window.setTimeout(function () { el.classList.remove('quiet'); }, 650);
+  })();
+</script>
+</body>
+</html>
