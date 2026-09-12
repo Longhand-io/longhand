@@ -46,7 +46,7 @@ Small, stable, and boring. Exposes to modules:
 
 - `spec`: read and write frontmatter fields by name, with schema validation and version handling.
 - `projects`: discover manuscript roots (folders with a `_Project.md`), list documents in order, resolve document ids to paths and back.
-- `git`: `snapshot(path, title)`, `history(docId)`, `show(commit, path)`, `restore(commit, path)`. Desktop only. Refuses to run if the vault is not inside a git work tree.
+- `history`: `snapshot(path, title)`, `list(docId)`, `read(snapshotId)`, `restore(snapshotId)`. Backed by a pluggable store: `files` (default, snapshots as plain copies under `_snapshots/`, works everywhere including mobile) or `git` (desktop only, commits with the spec's message shape, repository kept outside cloud-synced folders). `both` writes to each. See `sync-and-history.md`.
 - `ui`: sidebar view registration, inspector tab registration, commands.
 - `events`: document changed, snapshot taken, project reordered.
 
@@ -56,11 +56,11 @@ Modules register with the core at load. The core never imports a module. Every m
 
 | Module | Reads | Writes | Depends on |
 |---|---|---|---|
-| snapshots | git history for doc id | git commits | core.git, core.spec |
+| snapshots | history store for doc id | snapshot files and/or git commits | core.history, core.spec |
 | inspector | frontmatter | frontmatter | core.spec |
 | binder | folder tree, `order` field | file renames or `order` field | core.projects |
 | corkboard | `synopsis`, `label`, `status` | `order`, `status` (kanban columns) | core.projects, binder |
-| timeline | `date`, `date_end`, `created`, `modified`, snapshot dates | `date` when a card is dragged | core.projects, core.git |
+| timeline | `date`, `date_end`, `created`, `modified`, snapshot dates | `date` when a card is dragged | core.projects, core.history |
 | research | attachments folder, `attachments` field, PDF annotations | `attachments` field | core.projects |
 | compile | manuscript in order, preset config | files outside the vault | core.projects, optional pandoc |
 | targets | word counts, git history | a `targets` frontmatter block on `_Project.md` | core.projects |
@@ -79,6 +79,6 @@ The spec, the importer, and the core plus snapshots module are open source. That
 ## Threat model, briefly
 
 - A malicious `.scriv` package: titles with path separators or `..`, oversized images, malformed RTF. The importer sanitises names, confines output, bounds decoding, and never panics on bad input.
-- A vault that is not a git repo: the git adapter refuses rather than initialising one silently.
+- A vault inside iCloud, Dropbox, or OneDrive: the git store initialises with a separate git directory outside the synced folder, never a `.git` directory inside it.
 - Commit messages: titles are passed as argv, so shell metacharacters are inert.
 - No plugin setting can point at a binary other than `git` on PATH, and no setting accepts a shell command.

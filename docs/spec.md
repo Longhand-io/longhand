@@ -20,6 +20,7 @@ Everything the importer writes and the plugin reads. Plain Markdown, YAML frontm
       03 Source.pdf
     Notes/                      any other top-level binder folders keep their titles
     _attachments/               inline images extracted from document text
+    _snapshots/                 files history store, see below
     .scriv2obsidian.json        manifest: Scrivener UUID -> path, counts, warnings
 ```
 
@@ -84,7 +85,23 @@ keywords: [winter, spring]
 
 Any folder that contains a `_Project.md` is a project root. Nested projects are not supported.
 
+## Snapshot files
+
+The default history store. One full copy of the document per snapshot:
+
+```
+<Project>/_snapshots/<doc-id>/<timestamp> <title>.md
+```
+
+- `<timestamp>` is UTC, `YYYY-MM-DDTHH-MM-SSZ`, so names sort chronologically on every filesystem.
+- `<title>` is the snapshot title with the same character rules as file names, or `Untitled` if none was given.
+- The file is the document exactly as it was, frontmatter included, so restore is a copy.
+- Readers list the directory for the document's `id`; nothing else is needed. The folder is excluded from Obsidian search and graph by the plugin, and travels with the vault under any sync method, mobile included.
+
 ## Snapshot commits
+
+The optional git history store. Desktop only, needs `git`.
+
 
 A snapshot is a git commit that touches exactly the files being snapshotted and has this message shape:
 

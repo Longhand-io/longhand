@@ -31,7 +31,9 @@ flowchart LR
     b5 --> a5
 ```
 
-Uninstall it and every one of those is still there in plain form: the order is in the file names, the metadata is in frontmatter, the snapshots are ordinary git commits.
+Uninstall it and every one of those is still there in plain form: the order is in the file names, the metadata is in frontmatter, the snapshots are plain copies in a folder or ordinary git commits, your choice.
+
+Longhand does not sync. iCloud, Dropbox, Obsidian Sync, Syncthing, or a git remote all keep working, and snapshot history travels with the vault to every device. Details in [Sync and history](docs/sync-and-history.md).
 
 ## A writing day
 
@@ -93,7 +95,9 @@ Four rules hold the whole thing together:
 
 - [User stories](docs/user-stories.md): who this is for and a day in their writing life.
 - [Architecture](docs/architecture.md): core, modules, compatibility promises, threat model.
-- [Vault spec](docs/spec.md): the frontmatter fields, layout, and commit format everything agrees on.
+- [Vault spec](docs/spec.md): the frontmatter fields, layout, snapshot files, and commit format everything agrees on.
+- [Sync and history](docs/sync-and-history.md): how it behaves under iCloud, Dropbox, Obsidian Sync, Syncthing, and git.
+- Site: https://grassclaw.github.io/longhand/
 
 ## License
 
