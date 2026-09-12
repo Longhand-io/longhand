@@ -28,7 +28,7 @@ All three share a constraint: they will not accept a tool that owns their data. 
 - **Morning.** Opens the project panel. Sees the manuscript in order with word counts and status colours. Clicks the scene they left yesterday.
 - **Before a risky edit.** Runs "Take snapshot", names it "before cutting the dream sequence". A git commit is made for that one file with that name. No staging, no terminal.
 - **The edit goes badly.** Opens the Snapshots tab in the inspector. Sees the named snapshot list for this scene only. Clicks compare: yesterday's version on the left, live text on the right, changes tinted at word level, granularity toggle for paragraph, sentence, word. Copies back one paragraph. Or clicks restore, which snapshots the current state first, then rolls back.
-- **Planning.** Switches the panel to corkboard. Index cards from each scene's synopsis, colour from label. Drags to reorder; the file order updates. Switches to timeline: the same scenes laid out by story date, with a second track for when each was written.
+- **Planning.** Switches the panel to corkboard and arranges by label, the way Scrivener does it: one thread per point-of-view character, the chapter's scenes down the axis in manuscript order. Drags a card up and the scene moves earlier in the book; drags it sideways and its label changes. Switches the axis to story date and the same threads become a timeline, with a second track for when each scene was written.
 - **Research.** The research pane shows the PDFs, images, and notes attached to this scene. Opens a PDF in Obsidian's viewer, highlights, and the highlight links back into the scene. If they use Zotero, the annotations pull in.
 - **Submission.** Runs compile. Picks "Short story, Shunn manuscript". Gets a docx with the right front matter, headers, and scene breaks. The Markdown is untouched.
 - **Anywhere else.** On the phone via iCloud, the same files open in Obsidian mobile. Snapshots are desktop-only, but nothing is hidden.
@@ -44,8 +44,8 @@ Today Obsidian is a graph of notes. With Longhand it is a writing studio:
 | Properties panel | Inspector: synopsis, label, status, notes, keywords, bookmarks, and Snapshots tab |
 | No versioning UI (git plugin shows raw commits) | Named per-document snapshots, side-by-side compare, safe restore |
 | Longform compile to Markdown | Compile presets to docx, pdf, epub, Markdown with manuscript formats |
-| Kanban and Canvas | Corkboard generated from synopses, arrange by label, drag to reorder |
-| Timeline plugins that each want their own frontmatter | Timeline of scenes by story date and by writing date, from the same frontmatter |
+| Kanban and Canvas | Corkboard generated from synopses: grid, kanban columns, or label threads in manuscript order, drag to reorder or relabel |
+| Timeline plugins that each want their own frontmatter | The threads board with its axis switched to story date, from the same frontmatter |
 | Attachments scattered in folders | Research pane: PDFs, images, and notes attached to the scene you are writing, annotations linked back |
 | Leaflet plugin with its own marker syntax | Map: any image, pins stored as frontmatter linking places to scenes |
 | Word count in status bar | Session targets, project targets, writing history |

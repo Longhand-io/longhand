@@ -59,8 +59,7 @@ Modules register with the core at load. The core never imports a module. Every m
 | snapshots | history store for doc id | snapshot files and/or git commits | core.history, core.spec |
 | inspector | frontmatter | frontmatter | core.spec |
 | binder | folder tree, `order` field | file renames or `order` field | core.projects |
-| corkboard | `synopsis`, `label`, `status` | `order`, `status` (kanban columns) | core.projects, binder |
-| timeline | `date`, `date_end`, `created`, `modified`, snapshot dates | `date` when a card is dragged | core.projects, core.history |
+| corkboard | `synopsis`, `label`, `status`, `date`, snapshot dates | `order` (drag along the axis), `label` (drag across threads), `status` (kanban columns), `date` (story-date axis) | core.projects, binder, core.history |
 | research | attachments folder, `attachments` field, PDF annotations | `attachments` field | core.projects |
 | map | `type: map` notes, `image`, `pins` | `pins` on the map note | core.projects |
 | compile | manuscript in order, preset config | files outside the vault | core.projects, optional pandoc |

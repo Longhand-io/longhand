@@ -21,7 +21,7 @@ flowchart LR
         a1["Binder: ordered manuscript, drag to reorder"]
         a2["Inspector: synopsis, label, status, notes, attachments"]
         a3["Snapshots: named per document, side-by-side compare, safe restore"]
-        a4["Corkboard, kanban, and timeline reading the same frontmatter"]
+        a4["Corkboard as grid, kanban, or label threads, one set of fields"]
         a5["Compile presets to docx, pdf, epub, Markdown"]
     end
     b1 --> a1
@@ -39,7 +39,7 @@ Longhand does not sync. iCloud, Dropbox, Obsidian Sync, Syncthing, or a git remo
 
 - **Before a risky edit**, run *Take snapshot* and name it. One git commit, one file, no terminal.
 - **When the edit goes wrong**, open the Snapshots tab. Only this scene's named snapshots are listed. Compare shows the old version on the left and the live text on the right, changes tinted at word level, with a paragraph / sentence / word toggle. Copy a paragraph back, or restore, which snapshots the current state first.
-- **When planning**, flip the panel to corkboard: index cards from each scene's synopsis, colour from label, drag to reorder. Flip to timeline: the same scenes by story date, with a second track for when you wrote them.
+- **When planning**, flip the panel to corkboard and arrange by label: one thread per character or plot line, the chapter's scenes down the axis in manuscript order. Drag a card up to move the scene earlier in the book, sideways to change its label. Switch the axis to story date and the same threads become a timeline.
 - **When researching**, the research pane shows the PDFs, images, and notes attached to the scene. Highlight a PDF in Obsidian's viewer and the highlight links back.
 - **When submitting**, run compile, pick a manuscript preset, get a docx. The Markdown is untouched.
 - **With an AI**, point Claude Code or any agent at the folder. It sees plain Markdown and real git history and can answer "what changed in chapter four since June."
@@ -55,8 +55,7 @@ flowchart TB
         snap["Snapshots"]
         insp["Inspector"]
         bind["Binder"]
-        cork["Corkboard / Kanban"]
-        time["Timeline"]
+        cork["Corkboard: grid, kanban, threads"]
         res["Research"]
         map["Map"]
         comp["Compile"]
@@ -64,7 +63,7 @@ flowchart TB
     end
     importer -- writes --> spec
     spec -- read/write --> core
-    core --> snap & insp & bind & cork & time & res & map & comp & targ
+    core --> snap & insp & bind & cork & res & map & comp & targ
 ```
 
 Four rules hold the whole thing together:
@@ -81,8 +80,7 @@ Four rules hold the whole thing together:
 | Snapshots | Named checkpoints per document, compare, restore | git history | git commits |
 | Inspector | Synopsis, label, status, notes, keywords, bookmarks beside the text | frontmatter | frontmatter |
 | Binder | Ordered manuscript tree, drag to reorder, folder notes as chapters | folder tree, `order` | file names or `order` |
-| Corkboard / Kanban | Cards from synopses, columns by status or label | `synopsis`, `label`, `status` | `order`, `status` |
-| Timeline | Scenes by story date and by writing date | `date`, `date_end`, snapshot dates | `date` |
+| Corkboard | Cards from synopses as a grid, as kanban columns by status, or as label threads in manuscript order (Scrivener's arrange-by-label); the threads axis can switch to story date | `synopsis`, `label`, `status`, `date` | `order`, `label`, `status`, `date` |
 | Research | PDFs, images, notes attached to the current document | attachments, annotations | `attachments` |
 | Map | Any image as a map, pins linking places to scenes | `type: map`, `image`, `pins` | `pins` |
 | Compile | Manuscript presets to docx, pdf, epub, Markdown | manuscript order, preset | files outside the vault |
