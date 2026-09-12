@@ -88,6 +88,24 @@ Four rules hold the whole thing together:
 | Compile | Manuscript presets to docx, pdf, epub, Markdown | manuscript order, preset | files outside the vault |
 | Targets | Session and project goals, writing history | word counts, git history | `targets` on the project note |
 
+## What is open, and what is not
+
+Anything that touches your files is open source under MIT and always will be: the spec, the importer, the plugin core with its module and theme APIs, and every module that reads or writes the vault. Snapshots, binder, inspector, corkboard and threads, research, cast, flat maps, and targets are all in that set. Themes and project templates are open formats you can build, share, and sell; see [Themes and templates](docs/theming.md).
+
+Three things are paid, and none of them can hold your files:
+
+| Paid | How |
+|---|---|
+| Nib, the assistant | Monthly subscription with hosted models, or a cheaper licence with your own key or a local model |
+| Compile presets | Manuscript formats to docx, pdf, epub. One-time licence |
+| Relief maps | The world in three dimensions. One-time licence |
+
+Turn a paid module off and nothing in your vault changes. There is no field that only a paid module can read.
+
+## Nib
+
+Nib is the assistant: it lives in the margin, knows the manuscript through the spec and the history store, and stays out of your prose. Ask it what changed since a snapshot, where a character was last seen, or what depends on a passage you are about to cut. Everything it does lands as an ordinary edit or snapshot you can undo. It is off until you turn it on, and it sends your text nowhere you did not point it. Design notes in [Architecture](docs/architecture.md).
+
 ## Repositories
 
 - **[longhand](https://github.com/grassclaw/longhand)**, this repo: the spec, the design, and the plugin.
@@ -99,10 +117,11 @@ Four rules hold the whole thing together:
 - [Architecture](docs/architecture.md): core, modules, compatibility promises, threat model.
 - [Vault spec](docs/spec.md): the frontmatter fields, layout, snapshot files, and commit format everything agrees on.
 - [Sync and history](docs/sync-and-history.md): how it behaves under iCloud, Dropbox, Obsidian Sync, Syncthing, and git.
+- [Themes and templates](docs/theming.md): the open formats for building your own look and your own project starters.
 - Site: https://grassclaw.github.io/longhand-site/ (source in [longhand-site](https://github.com/grassclaw/longhand-site), with the brand kit)
 
 ## License and affiliation
 
 Longhand is an independent project. It is not affiliated with or endorsed by Literature & Latte, the makers of Scrivener, or by Obsidian; those names are trademarks of their respective owners.
 
-MIT. The spec, importer, plugin core, and Snapshots module are and will stay open. Convenience modules may carry a licence later; nothing that guards your data ever will.
+MIT for everything in this repository. Nib, compile presets, and relief maps are paid and live outside it; nothing that guards your data ever will be.
