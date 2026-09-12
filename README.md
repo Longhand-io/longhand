@@ -2,7 +2,7 @@
 
 **The writing studio for Obsidian.** Binder, snapshots with live compare, inspector, corkboard, timeline, research, compile. One plugin, one settings page, every module switchable, and everything stored as Markdown, frontmatter, and git commits you can read with nothing installed.
 
-> Status: design phase. The [importer](https://github.com/grassclaw/scrivener-to-obsidian) is under active development; the plugin follows. Watch the repo or open a discussion if you write long-form in Obsidian and want in early.
+> Status: design phase. The [importer](https://github.com/Longhand-io/scrivener-to-obsidian) is under active development; the plugin follows. Watch the repo or open a discussion if you write long-form in Obsidian and want in early.
 
 ## What changes when you install it
 
@@ -108,8 +108,8 @@ Nib is the assistant: it lives in the margin, knows the manuscript through the s
 
 ## Repositories
 
-- **[longhand](https://github.com/grassclaw/longhand)**, this repo: the spec, the design, and the plugin.
-- **[scrivener-to-obsidian](https://github.com/grassclaw/scrivener-to-obsidian)**: the importer that turns a `.scriv` package into a spec-compliant vault and replays every Scrivener snapshot as git history.
+- **[longhand](https://github.com/Longhand-io/longhand)**, this repo: the spec, the design, and the plugin.
+- **[scrivener-to-obsidian](https://github.com/Longhand-io/scrivener-to-obsidian)**: the importer that turns a `.scriv` package into a spec-compliant vault and replays every Scrivener snapshot as git history.
 
 ## Read more
 
@@ -118,7 +118,7 @@ Nib is the assistant: it lives in the margin, knows the manuscript through the s
 - [Vault spec](docs/spec.md): the frontmatter fields, layout, snapshot files, and commit format everything agrees on.
 - [Sync and history](docs/sync-and-history.md): how it behaves under iCloud, Dropbox, Obsidian Sync, Syncthing, and git.
 - [Themes and templates](docs/theming.md): the open formats for building your own look and your own project starters.
-- Site: https://grassclaw.github.io/longhand-site/ (source in [longhand-site](https://github.com/grassclaw/longhand-site), with the brand kit)
+- Site: https://longhand-io.github.io/longhand-site/ (source in [longhand-site](https://github.com/Longhand-io/longhand-site), with the brand kit)
 
 ## License and affiliation
 

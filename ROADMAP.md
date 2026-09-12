@@ -2,7 +2,7 @@
 
 > Hand-written public roadmap. The engineering ledger, `docs/PHASES.md`, is the source of truth for delivery state; this page is the narrative. Edit by hand.
 
-Longhand is a writing studio for Obsidian: binder, snapshots with side-by-side compare, inspector, corkboard and threads, research, cast, maps, compile, and Nib, the assistant. Everything is stored as Markdown, frontmatter, files, and git commits under an open [vault spec](docs/spec.md). The importer that brings Scrivener projects across, history included, lives in [scrivener-to-obsidian](https://github.com/grassclaw/scrivener-to-obsidian) and has its own roadmap.
+Longhand is a writing studio for Obsidian: binder, snapshots with side-by-side compare, inspector, corkboard and threads, research, cast, maps, compile, and Nib, the assistant. Everything is stored as Markdown, frontmatter, files, and git commits under an open [vault spec](docs/spec.md). The importer that brings Scrivener projects across, history included, lives in [scrivener-to-obsidian](https://github.com/Longhand-io/scrivener-to-obsidian) and has its own roadmap.
 
 This is a three-horizon roadmap. Where a thing is designed but not built, this page says so.
 

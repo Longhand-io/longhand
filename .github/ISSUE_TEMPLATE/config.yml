@@ -4,5 +4,5 @@ contact_links:
     url: https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability
     about: Do not open a public issue for a vulnerability. Use the Security tab to report privately. See SECURITY.md.
   - name: Questions and ideas
-    url: https://github.com/grassclaw/longhand/discussions
+    url: https://github.com/Longhand-io/longhand/discussions
     about: Ask a question or float an idea in Discussions.
