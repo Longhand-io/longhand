@@ -97,7 +97,7 @@ Four rules hold the whole thing together:
 - [Architecture](docs/architecture.md): core, modules, compatibility promises, threat model.
 - [Vault spec](docs/spec.md): the frontmatter fields, layout, snapshot files, and commit format everything agrees on.
 - [Sync and history](docs/sync-and-history.md): how it behaves under iCloud, Dropbox, Obsidian Sync, Syncthing, and git.
-- Site: https://grassclaw.github.io/longhand/
+- Site: https://grassclaw.github.io/longhand-site/ (source in [longhand-site](https://github.com/grassclaw/longhand-site), with the brand kit)
 
 ## License and affiliation
 
