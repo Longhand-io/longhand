@@ -1,0 +1,29 @@
+# DCO sign-off check. Read-only token, pull_request trigger only, action pinned by SHA.
+name: DCO
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Verify Signed-off-by
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          fail=0
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            email="$(git show -s --format='%ae' "$sha")"
+            if ! git show -s --format='%B' "$sha" | grep -iE '^Signed-off-by: ' | grep -qiF "<${email}>"; then
+              echo "::error::commit ${sha} is not signed off by its author. Run: git commit -s --amend"
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 0 ] && echo "All commits are signed off."
+          exit "$fail"
