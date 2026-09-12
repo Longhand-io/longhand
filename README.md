@@ -99,6 +99,8 @@ Four rules hold the whole thing together:
 - [Sync and history](docs/sync-and-history.md): how it behaves under iCloud, Dropbox, Obsidian Sync, Syncthing, and git.
 - Site: https://grassclaw.github.io/longhand/
 
-## License
+## License and affiliation
+
+Longhand is an independent project. It is not affiliated with or endorsed by Literature & Latte, the makers of Scrivener, or by Obsidian; those names are trademarks of their respective owners.
 
 MIT. The spec, importer, plugin core, and Snapshots module are and will stay open. Convenience modules may carry a licence later; nothing that guards your data ever will.
