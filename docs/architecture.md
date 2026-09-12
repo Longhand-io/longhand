@@ -69,6 +69,14 @@ Modules register with the core at load. The core never imports a module. Every m
 
 The spec, the importer, and the core plus snapshots module are open source. That is the trust layer: nobody adopts a writing tool that can hold their manuscript hostage. Modules that are convenience rather than data safety, such as compile presets, corkboard, and targets, are candidates for a licence key. The module boundary makes that a packaging decision, not a rewrite. Obsidian's developer policies on paid plugins must be checked before any paid tier ships.
 
+## Future directions, not committed
+
+Two ideas are worth recording so the module boundary is drawn with them in mind. Neither is in scope for v0.1.
+
+**Assistant.** An in-vault helper that knows the manuscript: what changed since a snapshot, which threads a chapter carries, where a character was last seen, what a scene's synopsis should say. It would be a module like any other, reading only through the spec and the history store, with three hard rules that keep the security posture intact: off by default, network access only after the writer supplies their own model endpoint or key (or points at a local model), and every action it takes lands as an ordinary edit or snapshot the writer can see and undo. It gets its own icon, the nib, so nobody mistakes it for Longhand itself.
+
+**Worldbuilding.** The map module already treats any image as a map with pins. Obsidian views are Chromium, so WebGL and a 3D scene are available to a plugin on desktop, and a heightmap PNG, a glTF model, or an exported map from a generator could render as a navigable world with the same pins linking to notes. This is the one place a rendering library would be justified, and it would be isolated inside the module so the core stays dependency-free.
+
 ## Compatibility
 
 - **Spec versioning.** Every `_Project.md` carries `longhand: 1`. Readers accept lower versions and migrate on write. Unknown fields are preserved verbatim.
