@@ -62,6 +62,7 @@ Modules register with the core at load. The core never imports a module. Every m
 | corkboard | `synopsis`, `label`, `status` | `order`, `status` (kanban columns) | core.projects, binder |
 | timeline | `date`, `date_end`, `created`, `modified`, snapshot dates | `date` when a card is dragged | core.projects, core.history |
 | research | attachments folder, `attachments` field, PDF annotations | `attachments` field | core.projects |
+| map | `type: map` notes, `image`, `pins` | `pins` on the map note | core.projects |
 | compile | manuscript in order, preset config | files outside the vault | core.projects, optional pandoc |
 | targets | word counts, git history | a `targets` frontmatter block on `_Project.md` | core.projects |
 

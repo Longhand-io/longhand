@@ -44,7 +44,7 @@ status: First Draft
 tags: [winter, vegetarian]                 # Scrivener keywords, slugified
 include: true                              # Scrivener "include in compile"
 bookmarks: ["[[Sample Recipe]]"]           # Scrivener document bookmarks as wikilinks
-date: 1897-04-12                           # story date, for the timeline module (optional)
+date: 1897-04-12                           # story date; any note with a date appears on the timeline (optional)
 date_end: 1897-04-13                       # story date range end (optional)
 attachments: ["[[Research/03 Source.pdf]]"] # research items attached to this document (optional)
 meta:                                      # Scrivener custom metadata, keyed by field title
@@ -67,6 +67,33 @@ Rules:
 - Scrivener comments become Obsidian comments immediately after the anchored text: `anchored text%% comment body %%`.
 - Internal links (`scrivlnk://`) become `[[Title]]` wikilinks to the target's file name. Unresolvable ones are left as plain text.
 - Inline images are written to `_attachments/<id>-<n>.<ext>` and embedded as `![[...]]`.
+
+## Event notes
+
+Anything that should sit on the timeline without being manuscript, such as a historical event or a character's birth, is a note with `type: event` and a `date`. It is rendered as a pin with a dashed outline so it reads as context, not as a scene.
+
+## Map notes
+
+A map is a note with `type: map`, an `image` that points at a picture in the vault, and `pins`. Coordinates are fractions of the image width and height so the map can be re-exported at any size.
+
+```yaml
+---
+id: 3C7D0E2B-9A15-4F6E-8B21-5D4A7C9E1F30
+type: map
+title: Whitby, 1897
+image: "[[Research/02 Map.png]]"
+pins:
+  - to: "[[02 The Tin]]"
+    x: 0.22
+    y: 0.44
+    label: The house
+  - to: "[[03 Winter Fair]]"
+    x: 0.66
+    y: 0.36
+---
+```
+
+A pin's `to` is a wikilink to any note. Nothing is stored on the target, so deleting a map deletes only its pins.
 
 ## Project note
 

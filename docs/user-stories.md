@@ -47,6 +47,7 @@ Today Obsidian is a graph of notes. With Longhand it is a writing studio:
 | Kanban and Canvas | Corkboard generated from synopses, arrange by label, drag to reorder |
 | Timeline plugins that each want their own frontmatter | Timeline of scenes by story date and by writing date, from the same frontmatter |
 | Attachments scattered in folders | Research pane: PDFs, images, and notes attached to the scene you are writing, annotations linked back |
+| Leaflet plugin with its own marker syntax | Map: any image, pins stored as frontmatter linking places to scenes |
 | Word count in status bar | Session targets, project targets, writing history |
 
 Everything in the right column is stored as frontmatter, files, and git commits. Uninstall the plugin and the left column still shows all of it in plain form.

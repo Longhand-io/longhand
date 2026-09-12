@@ -58,12 +58,13 @@ flowchart TB
         cork["Corkboard / Kanban"]
         time["Timeline"]
         res["Research"]
+        map["Map"]
         comp["Compile"]
         targ["Targets"]
     end
     importer -- writes --> spec
     spec -- read/write --> core
-    core --> snap & insp & bind & cork & time & res & comp & targ
+    core --> snap & insp & bind & cork & time & res & map & comp & targ
 ```
 
 Four rules hold the whole thing together:
@@ -83,6 +84,7 @@ Four rules hold the whole thing together:
 | Corkboard / Kanban | Cards from synopses, columns by status or label | `synopsis`, `label`, `status` | `order`, `status` |
 | Timeline | Scenes by story date and by writing date | `date`, `date_end`, snapshot dates | `date` |
 | Research | PDFs, images, notes attached to the current document | attachments, annotations | `attachments` |
+| Map | Any image as a map, pins linking places to scenes | `type: map`, `image`, `pins` | `pins` |
 | Compile | Manuscript presets to docx, pdf, epub, Markdown | manuscript order, preset | files outside the vault |
 | Targets | Session and project goals, writing history | word counts, git history | `targets` on the project note |
 
