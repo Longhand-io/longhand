@@ -61,7 +61,8 @@ Modules register with the core at load. The core never imports a module. Every m
 | binder | folder tree, `order` field | file renames or `order` field | core.projects |
 | corkboard | `synopsis`, `label`, `status`, `date`, snapshot dates | `order` (drag along the axis), `label` (drag across threads), `status` (kanban columns), `date` (story-date axis) | core.projects, binder, core.history |
 | research | attachments folder, `attachments` field, PDF annotations | `attachments` field | core.projects |
-| map | `type: map` notes, `image`, `pins` | `pins` on the map note | core.projects |
+| map | `type: map` notes, `image`, `relief`, `pins` | `pins` on the map note | core.projects; relief rendering isolated with its own renderer dependency |
+| cast | `type: character` and `setting` notes, `aliases`, links and approved name matches in manuscript order | nothing; appearances are computed | core.projects, binder |
 | compile | manuscript in order, preset config | files outside the vault | core.projects, optional pandoc |
 | targets | word counts, git history | a `targets` frontmatter block on `_Project.md` | core.projects |
 
@@ -75,7 +76,7 @@ Two ideas are worth recording so the module boundary is drawn with them in mind.
 
 **Assistant.** An in-vault helper that knows the manuscript: what changed since a snapshot, which threads a chapter carries, where a character was last seen, what a scene's synopsis should say. It would be a module like any other, reading only through the spec and the history store, with three hard rules that keep the security posture intact: off by default, network access only after the writer supplies their own model endpoint or key (or points at a local model), and every action it takes lands as an ordinary edit or snapshot the writer can see and undo. It gets its own icon, the nib, so nobody mistakes it for Longhand itself.
 
-**Worldbuilding.** The map module already treats any image as a map with pins. Obsidian views are Chromium, so WebGL and a 3D scene are available to a plugin on desktop, and a heightmap PNG, a glTF model, or an exported map from a generator could render as a navigable world with the same pins linking to notes. This is the one place a rendering library would be justified, and it would be isolated inside the module so the core stays dependency-free.
+**Relief maps.** The map module treats any image as a map with pins. Obsidian views are Chromium, so WebGL is available to a plugin on desktop, and a heightmap PNG, a glTF model, or an export from a map generator can render as a navigable world with the same pins linking to notes. The spec already carries the `relief` field so flat and relief readers share one note. This is the one place a rendering library is justified, and it stays isolated inside the module so the core is dependency-free. Desktop only; the flat map is the fallback.
 
 ## Compatibility
 

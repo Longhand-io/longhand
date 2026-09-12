@@ -57,13 +57,14 @@ flowchart TB
         bind["Binder"]
         cork["Corkboard: grid, kanban, threads"]
         res["Research"]
-        map["Map"]
+        map["Map: flat, relief"]
+        cast["Cast"]
         comp["Compile"]
         targ["Targets"]
     end
     importer -- writes --> spec
     spec -- read/write --> core
-    core --> snap & insp & bind & cork & res & map & comp & targ
+    core --> snap & insp & bind & cork & res & map & cast & comp & targ
 ```
 
 Four rules hold the whole thing together:
@@ -82,7 +83,8 @@ Four rules hold the whole thing together:
 | Binder | Ordered manuscript tree, drag to reorder, folder notes as chapters | folder tree, `order` | file names or `order` |
 | Corkboard | Cards from synopses as a grid, as kanban columns by status, or as label threads in manuscript order (Scrivener's arrange-by-label); the threads axis can switch to story date | `synopsis`, `label`, `status`, `date` | `order`, `label`, `status`, `date` |
 | Research | PDFs, images, notes attached to the current document | attachments, annotations | `attachments` |
-| Map | Any image as a map, pins linking places to scenes | `type: map`, `image`, `pins` | `pins` |
+| Map | Any image as a map, flat or in relief on desktop, pins linking places to scenes | `type: map`, `image`, `relief`, `pins` | `pins` |
+| Cast | Characters and settings as notes; appearances computed from links and approved name matches, shown across the manuscript | `type: character`, `aliases`, links | nothing |
 | Compile | Manuscript presets to docx, pdf, epub, Markdown | manuscript order, preset | files outside the vault |
 | Targets | Session and project goals, writing history | word counts, git history | `targets` on the project note |
 

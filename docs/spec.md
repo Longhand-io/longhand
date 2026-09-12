@@ -72,9 +72,25 @@ Rules:
 
 Anything that should sit on the timeline without being manuscript, such as a historical event or a character's birth, is a note with `type: event` and a `date`. It is rendered as a pin with a dashed outline so it reads as context, not as a scene.
 
+## Character and setting notes
+
+A character is a note with `type: character`. A place that is not a map is `type: setting`. Both may carry `aliases`, a list of other names the manuscript uses for them.
+
+```yaml
+---
+id: 7A1F3C9D-2B84-4E5A-9C61-0D3F8B2E4A17
+type: character
+title: Mara
+aliases: ["the Harrow girl"]
+label: Red                                  # the thread this character carries on the corkboard
+---
+```
+
+Appearances are never stored. A character appears in a scene when the scene links to the character's note, or, if the writer turns on name matching for that character, when the scene's text contains the title or an alias as a whole word. Readers compute appearances from the manuscript in order; the cast panel is a view, not a record, so it can never be out of date.
+
 ## Map notes
 
-A map is a note with `type: map`, an `image` that points at a picture in the vault, and `pins`. Coordinates are fractions of the image width and height so the map can be re-exported at any size.
+A map is a note with `type: map`, an `image` that points at a picture in the vault, and `pins`. Coordinates are fractions of the image width and height so the map can be re-exported at any size. An optional `relief` field points at a heightmap image or a model file; a reader that can render relief uses it, and one that cannot shows the flat image, with the same pins in both.
 
 ```yaml
 ---
