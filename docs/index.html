@@ -94,6 +94,88 @@
   .two h3 { font-size: 1.25rem; font-weight: 600; margin: 0 0 .5rem; }
   .two p { margin: 0 0 .75rem; color: var(--graphite); }
   footer { border-top: 1px solid var(--rule); padding: 1.5rem 0 3rem; color: var(--graphite); font-size: 1rem; }
+
+  /* feature panels */
+  .panel { border: 1px solid var(--rule); background: #FBFBF9; margin: 1.5rem 0 0; }
+  .panel .bar { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem 1.25rem; border-bottom: 1px solid var(--rule); color: var(--graphite); font-size: 1rem; }
+  .panel .bar strong { color: var(--ink); font-weight: 500; }
+  .panel .body { padding: 1.25rem; }
+  .feature { padding: 0 0 3.5rem; }
+  .feature > p { max-width: var(--measure); margin: 0 0 .5rem; }
+  .split { display: grid; grid-template-columns: 1.2fr 1fr; }
+  .split > div + div { border-left: 1px solid var(--rule); }
+  .split > div { padding: 1.25rem; }
+  .tag { display: inline-block; border: 1px solid var(--rule); border-radius: 3px; padding: .05rem .45rem; font-size: .9rem; color: var(--ink); background: #fff; white-space: nowrap; }
+  .lab { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; vertical-align: -1px; margin-right: .35rem; }
+  .red { background: #B65A52; } .blue { background: #4C6A9A; } .green { background: #5E8A5C; } .yellow { background: #C9A24A; }
+
+  /* timeline */
+  .tl { position: relative; padding: .5rem 0 0; }
+  .tl .ruler { display: flex; justify-content: space-between; border-bottom: 1px solid var(--ink); padding-bottom: .3rem; font-size: .9rem; color: var(--graphite); }
+  .tl .track { position: relative; height: 4.6rem; }
+  .tl .track + .track { border-top: 1px dashed var(--rule); }
+  .tl .track .name { position: absolute; left: 0; top: .5rem; font-size: .85rem; color: var(--graphite); }
+  .tl .pin { position: absolute; top: 1.9rem; transform: translateX(-50%); }
+  .tl .pin::before { content: ""; position: absolute; left: 50%; top: -1.35rem; width: 1px; height: 1.3rem; background: var(--ink); }
+  .tl .pin.event .tag { border-style: dashed; color: var(--graphite); }
+  .tl .dot { position: absolute; top: 1.3rem; width: .55rem; height: .55rem; border-radius: 50%; background: var(--ink); transform: translateX(-50%); }
+  .tl .dot.small { width: .4rem; height: .4rem; background: var(--graphite); }
+
+  /* research */
+  .excerpt p { margin: 0 0 .9rem; max-width: 42ch; }
+  .excerpt p:last-child { margin: 0; }
+  .excerpt mark { background: var(--added-wash); color: inherit; padding: 0 .08em; }
+  .pins { list-style: none; margin: 0; padding: 0; }
+  .pins li { display: grid; grid-template-columns: 2.6rem 1fr; gap: .8rem; padding: .7rem 0; border-top: 1px solid var(--rule); }
+  .pins li:first-child { border-top: 0; padding-top: 0; }
+  .pins .thumb { width: 2.6rem; height: 3.2rem; border: 1px solid var(--rule); background: #fff; font-size: .7rem; color: var(--graphite); display: flex; align-items: flex-end; justify-content: center; padding-bottom: .2rem; }
+  .pins .thumb.img { background: linear-gradient(160deg, #D7DACF, #B9BFB3); }
+  .pins .thumb.note { background: repeating-linear-gradient(#fff 0 .35rem, var(--rule) .35rem .38rem); }
+  .pins .what { font-weight: 600; }
+  .pins .why { color: var(--graphite); font-size: .95rem; }
+  .pins q { quotes: "\201C" "\201D"; }
+
+  /* corkboard */
+  .cork { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .cork .col h4 { margin: 0 0 .6rem; font-weight: 500; font-size: 1rem; color: var(--graphite); }
+  .card { background: #fff; border: 1px solid var(--rule); padding: .75rem .9rem .8rem; margin-bottom: .75rem; box-shadow: 0 1px 0 var(--rule); }
+  .card .t { font-weight: 600; margin-bottom: .2rem; }
+  .card .s { color: var(--graphite); font-size: .95rem; }
+  .card .n { font-size: .8rem; color: var(--graphite); margin-top: .5rem; }
+
+  /* binder + inspector */
+  .tree { list-style: none; margin: 0; padding: 0; }
+  .tree li { display: flex; justify-content: space-between; padding: .3rem 0; }
+  .tree li.dir { font-weight: 600; }
+  .tree li.in { padding-left: 1.25rem; }
+  .tree li.sel { background: var(--paper-deep); margin: 0 -.5rem; padding-left: 1.75rem; padding-right: .5rem; }
+  .tree .wc { color: var(--graphite); font-size: .9rem; }
+  .insp dl { margin: 0; }
+  .insp dt { font-size: .85rem; color: var(--graphite); margin-top: .8rem; }
+  .insp dt:first-child { margin-top: 0; }
+  .insp dd { margin: .1rem 0 0; }
+  .insp .tabs { display: flex; gap: 1.25rem; border-bottom: 1px solid var(--rule); margin: 0 0 1rem; font-size: .95rem; color: var(--graphite); }
+  .insp .tabs span:first-child { color: var(--ink); border-bottom: 2px solid var(--ink); padding-bottom: .35rem; margin-bottom: -1px; }
+  .snaps { list-style: none; margin: .5rem 0 0; padding: 0; font-size: .95rem; }
+  .snaps li { display: flex; justify-content: space-between; padding: .35rem 0; border-top: 1px solid var(--rule); }
+  .snaps li span:last-child { color: var(--graphite); }
+
+  /* map */
+  .map { position: relative; height: 18rem; background:
+      radial-gradient(ellipse at 20% 30%, #C9CFC0 0 18%, transparent 19%),
+      radial-gradient(ellipse at 70% 65%, #C2C9B8 0 26%, transparent 27%),
+      radial-gradient(ellipse at 55% 20%, #D5DACC 0 12%, transparent 13%),
+      linear-gradient(#E3E6DD, #DADED4); }
+  .map .river { position: absolute; left: 0; right: 0; top: 52%; height: 2px; background: #9DB0BF; transform: rotate(-8deg); }
+  .map .mpin { position: absolute; transform: translate(-50%, -100%); }
+  .map .mpin::after { content: ""; position: absolute; left: 50%; bottom: -.5rem; width: .5rem; height: .5rem; background: var(--ink); border-radius: 50%; transform: translateX(-50%); }
+  .map .mpin .tag { display: block; margin-bottom: .3rem; }
+
+  @media (max-width: 720px) {
+    .split, .cork { grid-template-columns: 1fr; }
+    .split > div + div { border-left: 0; border-top: 1px solid var(--rule); }
+    .tl .track { height: 5.4rem; }
+  }
   @media (max-width: 720px) {
     .compare .bar, .compare .panes, dl.changes, .two { grid-template-columns: 1fr; }
     .compare .bar div + div, .compare .pane + .pane { border-left: 0; border-top: 1px solid var(--rule); }
@@ -140,6 +222,121 @@
     <p>If you are coming from Scrivener, the importer replays every snapshot you ever took as history with its original title and date. You arrive with your past intact.</p>
   </section>
 
+
+  <section class="feature">
+    <h2>Pin a scene to a date.</h2>
+    <p>Give a note a story date and it appears on the timeline. Scenes, and anything else with a date, such as a birth, a war, a letter that was never sent, sit on the same ruler. A second track shows when you wrote each scene, from its snapshots, so you can see the book's time and your own side by side. Drag a pin and the date in the note changes; there is no second copy of anything.</p>
+    <div class="panel" aria-label="Timeline example">
+      <div class="bar"><strong>Timeline</strong><span>1896 to 1899, story time</span></div>
+      <div class="body tl">
+        <div class="ruler"><span>1896</span><span>1897</span><span>1898</span><span>1899</span></div>
+        <div class="track">
+          <span class="name">Story</span>
+          <div class="pin event" style="left:9%"><span class="tag">Father leaves</span></div>
+          <div class="pin" style="left:34%"><span class="tag"><i class="lab red"></i>The Letter</span></div>
+          <div class="pin" style="left:47%"><span class="tag"><i class="lab red"></i>The Tin</span></div>
+          <div class="pin" style="left:63%"><span class="tag"><i class="lab blue"></i>Winter Fair</span></div>
+          <div class="pin event" style="left:78%"><span class="tag">Flood</span></div>
+          <div class="pin" style="left:90%"><span class="tag"><i class="lab green"></i>Return</span></div>
+        </div>
+        <div class="track">
+          <span class="name">Written</span>
+          <div class="dot small" style="left:34%" title="First draft, 2020"></div>
+          <div class="dot" style="left:36%" title="Second draft, 2021"></div>
+          <div class="dot small" style="left:47%"></div>
+          <div class="dot small" style="left:63%"></div>
+          <div class="dot" style="left:66%"></div>
+          <div class="dot small" style="left:90%"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature">
+    <h2>Pin research to the scene that needs it.</h2>
+    <p>Attach a PDF, an image, or a note to the document you are writing and it shows up beside the text whenever that document is open. Highlight a passage in the PDF and the highlight links back to the exact sentence it supports. Research lives in the vault as ordinary files; a pin is one line of frontmatter.</p>
+    <div class="panel split" aria-label="Research pane example">
+      <div class="excerpt">
+        <p>Mara found the letter in the tin with the buttons. The postmark was <mark>Whitby, the fourth of March</mark>, three days before the flood took the lower town.</p>
+        <p>She read it twice, standing, because sitting felt like agreeing to it.</p>
+      </div>
+      <div>
+        <ul class="pins">
+          <li><div class="thumb">PDF</div><div><div class="what">Whitby Gazette, March 1897</div><div class="why">Highlight, page 3: <q>the water reached the chapel steps by nightfall</q></div></div></li>
+          <li><div class="thumb img"></div><div><div class="what">Harbour photograph, 1890s</div><div class="why">For the description of the quay</div></div></li>
+          <li><div class="thumb note"></div><div><div class="what">Postal routes, Yorkshire coast</div><div class="why">Your note. Confirms a three-day delivery.</div></div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature">
+    <h2>See the book as cards.</h2>
+    <p>The corkboard makes an index card from each scene's synopsis, coloured by label. Arrange the columns by status and it is a kanban board; by label and it is the plot threads side by side; by chapter and it is the binder laid flat. Drag a card and the scene's order or status changes in its frontmatter. There is nothing to keep in sync because there is only one copy.</p>
+    <div class="panel" aria-label="Corkboard example">
+      <div class="bar"><strong>Corkboard</strong><span>Columns by status</span></div>
+      <div class="body cork">
+        <div class="col"><h4>First draft</h4>
+          <div class="card"><div class="t"><i class="lab blue"></i>Winter Fair</div><div class="s">Mara sells the buttons. Someone recognises the tin.</div><div class="n">1,140 words</div></div>
+          <div class="card"><div class="t"><i class="lab green"></i>Return</div><div class="s">The house is smaller than she remembers.</div><div class="n">620 words</div></div>
+        </div>
+        <div class="col"><h4>Revised</h4>
+          <div class="card"><div class="t"><i class="lab red"></i>The Tin</div><div class="s">She decides not to open it. Then she opens it.</div><div class="n">2,010 words</div></div>
+        </div>
+        <div class="col"><h4>Final</h4>
+          <div class="card"><div class="t"><i class="lab red"></i>The Letter</div><div class="s">Mara finds the letter. Reads it standing.</div><div class="n">2,417 words</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature">
+    <h2>A binder on the left, an inspector on the right.</h2>
+    <p>The manuscript in order, with word counts, folders as chapters. Beside the text, everything about the scene that is not the scene: synopsis, label, status, notes, keywords, the research pinned to it, and the Snapshots tab. All of it is frontmatter and files, shown in one place.</p>
+    <div class="panel split" aria-label="Binder and inspector example">
+      <div>
+        <ul class="tree">
+          <li class="dir"><span>01 Part One</span><span class="wc">5,187</span></li>
+          <li class="in"><span>01 The Letter</span><span class="wc">2,417</span></li>
+          <li class="in sel"><span>02 The Tin</span><span class="wc">2,010</span></li>
+          <li class="in"><span>03 Winter Fair</span><span class="wc">1,140</span></li>
+          <li class="dir"><span>02 Part Two</span><span class="wc">620</span></li>
+          <li class="in"><span>01 Return</span><span class="wc">620</span></li>
+        </ul>
+      </div>
+      <div class="insp">
+        <div class="tabs"><span>Inspector</span><span>Snapshots</span><span>Research</span></div>
+        <dl>
+          <dt>Synopsis</dt><dd>She decides not to open it. Then she opens it.</dd>
+          <dt>Label</dt><dd><i class="lab red"></i>Mara</dd>
+          <dt>Status</dt><dd>Revised</dd>
+          <dt>Story date</dt><dd>12 April 1897</dd>
+          <dt>Snapshots</dt>
+          <dd><ul class="snaps">
+            <li><span>Before cutting the dream sequence</span><span>Tue</span></li>
+            <li><span>Second draft</span><span>2 Oct 2021</span></li>
+            <li><span>First draft</span><span>19 Jan 2020</span></li>
+          </ul></dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature">
+    <h2>Pin a scene to a place.</h2>
+    <p>Any image can be a map: a hand-drawn world, a scanned town plan, a floor plan of the house. Drop a pin and link it to a scene, a character, or a note. Click the pin to open it; open the scene and see where it happens. Pins are stored on the map's own note, so the map is just a picture with frontmatter.</p>
+    <div class="panel" aria-label="Map example">
+      <div class="bar"><strong>Whitby, 1897</strong><span>Research/Map.png, 4 pins</span></div>
+      <div class="map">
+        <div class="river"></div>
+        <div class="mpin" style="left:22%; top:44%"><span class="tag">The house</span></div>
+        <div class="mpin" style="left:48%; top:70%"><span class="tag">Chapel steps</span></div>
+        <div class="mpin" style="left:66%; top:36%"><span class="tag">Winter Fair</span></div>
+        <div class="mpin" style="left:84%; top:62%"><span class="tag">The quay</span></div>
+      </div>
+    </div>
+  </section>
+
   <section>
     <h2>What changes in Obsidian</h2>
     <dl class="changes">
@@ -149,6 +346,8 @@
       <div><dt>Three plugins become one view.</dt><dd>Corkboard, kanban, and timeline read the same synopsis, label, status, and date fields.</dd></div>
       <div><dt>Research stays with the scene.</dt><dd>PDFs, images, and notes attached to the document you have open. Highlights link back.</dd></div>
       <div><dt>Compile means a manuscript.</dt><dd>Presets for short story, novel, poem, essay. Docx, pdf, epub, or Markdown. Your files are untouched.</dd></div>
+      <div><dt>Any image becomes a map.</dt><dd>Pins link places to scenes and back. Stored as frontmatter on the map's note.</dd></div>
+      <div><dt>Every module has a switch.</dt><dd>One settings page. Turn off what you do not write with; nothing is stranded because every module reads the same fields.</dd></div>
     </dl>
   </section>
 
