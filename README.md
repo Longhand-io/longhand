@@ -90,7 +90,7 @@ Four rules hold the whole thing together:
 
 ## What is open, and what is not
 
-Anything that touches your files is open source under MIT and always will be: the spec, the importer, the plugin core with its module and theme APIs, and every module that reads or writes the vault. Snapshots, binder, inspector, corkboard and threads, research, cast, flat maps, and targets are all in that set. Themes and project templates are open formats you can build, share, and sell; see [Themes and templates](docs/theming.md).
+Anything that touches your files is open source under Apache-2.0 and always will be: the spec, the importer, the plugin core with its module and theme APIs, and every module that reads or writes the vault. Snapshots, binder, inspector, corkboard and threads, research, cast, flat maps, and targets are all in that set. Themes and project templates are open formats you can build, share, and sell; see [Themes and templates](docs/theming.md).
 
 Three things are paid, and none of them can hold your files:
 
@@ -124,4 +124,4 @@ Nib is the assistant: it lives in the margin, knows the manuscript through the s
 
 Longhand is an independent project. It is not affiliated with or endorsed by Literature & Latte, the makers of Scrivener, or by Obsidian; those names are trademarks of their respective owners.
 
-MIT for everything in this repository. The names and marks are not part of the licence; see [TRADEMARKS.md](TRADEMARKS.md). Nib, compile presets, and relief maps are paid and live outside it; nothing that guards your data ever will be.
+Apache License 2.0 for everything in this repository, copyright 0xSpectra LLC and the Longhand Authors; see [NOTICE](NOTICE). The names and marks are not part of the licence; see [TRADEMARKS.md](TRADEMARKS.md). Nib, compile presets, and relief maps are paid and live outside it; nothing that guards your data ever will be.

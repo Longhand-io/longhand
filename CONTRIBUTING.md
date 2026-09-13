@@ -19,7 +19,7 @@ Every commit must carry a `Signed-off-by:` line matching its author, which certi
 git commit -s
 ```
 
-That is the whole contributor agreement. There is no CLA.
+That is the whole contributor agreement. There is no CLA, and no real-name requirement: sign off with a name you use consistently and an email that reaches you. Contributions are licensed under Apache-2.0 and the copyright stays with you; the NOTICE file credits the Longhand Authors collectively.
 
 ## Commit messages
 

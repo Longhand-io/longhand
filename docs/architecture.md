@@ -73,7 +73,7 @@ Modules register with the core at load. The core never imports a module. Every m
 
 ### Licensing shape (for later, not v0.1)
 
-The spec, the importer, and the core plus snapshots module are open source. That is the trust layer: nobody adopts a writing tool that can hold their manuscript hostage. Modules that are convenience rather than data safety, such as compile presets, corkboard, and targets, are candidates for a licence key. The module boundary makes that a packaging decision, not a rewrite. Obsidian's developer policies on paid plugins must be checked before any paid tier ships.
+The spec, the importer, and the core plus every vault module are open source under Apache-2.0. That is the trust layer: nobody adopts a writing tool that can hold their manuscript hostage. Modules that are convenience rather than data safety, such as compile presets, corkboard, and targets, are candidates for a licence key. The module boundary makes that a packaging decision, not a rewrite. Obsidian's developer policies on paid plugins must be checked before any paid tier ships.
 
 ## Future directions, not committed
 
