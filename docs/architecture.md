@@ -7,6 +7,7 @@
 3. **Modular by design.** The plugin is a small core plus feature modules that depend only on the core API and the spec. Modules can ship, be disabled, or be licensed independently.
 4. **Secure by design.** No third-party runtime dependencies in the importer. No network access anywhere. Git is invoked as an argv array, never through a shell string. Paths derived from user content are sanitised and confined to the output directory. Nothing executes content from the vault.
 5. **Boring technology.** Go standard library for the importer. TypeScript with the Obsidian API for the plugin. Git as the version store. Pandoc is optional, only for compile targets that need it.
+6. **Host-agnostic modules.** Obsidian is the first host, not the only one. Modules never import the Obsidian API directly; they talk to a small host interface (read and write files, watch the vault, open a document at a line, register a view and a command, show a settings section) that the Obsidian adapter implements today. A standalone Longhand application implements the same interface later and runs the same modules unchanged. The spec makes the files portable; this rule makes the code portable.
 
 ## Components
 
@@ -39,6 +40,10 @@
 - Snapshot backfill: each Scrivener snapshot becomes a git commit at its original date with its original title, in chronological order across the project, before the final import commit. History arrives intact.
 - Own RTF reader. Scrivener writes Cocoa RTF; the reader handles paragraphs, line breaks, bold, italic, underline, strike, super and subscript, lists, tabs, hyperlink fields (including Scrivener's `scrivcmt://` comment anchors and `scrivlnk://` internal links), Unicode escapes, cp1252 escapes, and inline images. It does not handle tables or named styles; those are recorded as limitations rather than silently mangled.
 - Runs anywhere Go runs. Single static binary. No pandoc required for import.
+
+### Host adapter
+
+The only code that imports `obsidian` lives in `src/host/obsidian/`. It implements the `Host` interface the core and modules are written against. Tests run the core against an in-memory host. When a standalone app exists, it ships its own `Host` and the module directory is shared.
 
 ### Plugin core
 

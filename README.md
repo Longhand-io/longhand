@@ -124,4 +124,4 @@ Nib is the assistant: it lives in the margin, knows the manuscript through the s
 
 Longhand is an independent project. It is not affiliated with or endorsed by Literature & Latte, the makers of Scrivener, or by Obsidian; those names are trademarks of their respective owners.
 
-MIT for everything in this repository. Nib, compile presets, and relief maps are paid and live outside it; nothing that guards your data ever will be.
+MIT for everything in this repository. The names and marks are not part of the licence; see [TRADEMARKS.md](TRADEMARKS.md). Nib, compile presets, and relief maps are paid and live outside it; nothing that guards your data ever will be.
