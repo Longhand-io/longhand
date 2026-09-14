@@ -1,0 +1,10 @@
+{
+  "id": "longhand",
+  "name": "Longhand",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "The writing studio for Obsidian: binder, snapshots, inspector, corkboard, maps. Everything stays as Markdown, frontmatter, and files.",
+  "author": "0xSpectra LLC and the Longhand Authors",
+  "authorUrl": "https://longhand-io.github.io/longhand-site/",
+  "isDesktopOnly": false
+}

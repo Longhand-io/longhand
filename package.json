@@ -1,0 +1,21 @@
+{
+  "name": "longhand",
+  "version": "0.1.0",
+  "description": "The writing studio for Obsidian. Core plus switchable modules; everything stored as Markdown, frontmatter, files, and git commits.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.config.mjs production",
+    "dev": "node esbuild.config.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "rm -rf build && tsc -p tsconfig.test.json && node --test \"build/tests/**/*.test.js\"",
+    "gate": "npm run typecheck && npm run test && npm run build && hack/verify-boilerplate.sh && echo gate green"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.24.0",
+    "obsidian": "^1.7.2",
+    "typescript": "^5.7.0"
+  }
+}
