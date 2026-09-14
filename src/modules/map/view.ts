@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 0xSpectra LLC and the Longhand Authors.
 
-// The flat map view. An image (or a blank canvas) with pins on top. Click a pin to open its
-// note, drag to move it, double-click the map to add one, right-click or press Delete to
-// remove one. Every change goes through MapModel, which writes only `pins`.
+// The flat map view. An image (or a blank canvas) with pins on top. Hover a pin for its place
+// card, click to open its note, drag to move it, double-click the map to add one, right-click
+// or press Delete to remove one. Every change goes through MapModel, which writes only `pins`.
 //
 // Plain DOM, no map library. The stage keeps the image's aspect ratio and pins are placed
 // with percentages, so the same note draws the same at any size.
@@ -11,10 +11,13 @@
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import type { Pin } from "../../core/spec.js";
+import { createPlaceCard, type PlaceCard } from "./card.js";
 import { MapModel, type ResolvedMap } from "./model.js";
 
 const DRAG_THRESHOLD = 4; // px before a press becomes a drag
 const NUDGE = 0.005; // arrow-key step in fractions
+const HIDE_DELAY = 260; // ms of grace when the pointer leaves a pin or its card
+const CARD_GAP = 12; // px between a pin and its card
 
 export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHandle {
   const model = new MapModel(core, path);
@@ -29,8 +32,8 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   const hint = document.createElement("div");
   hint.className = "lh-map-hint";
   hint.textContent = core.host.isMobile
-    ? "Tap a pin to open its note. Press and hold to add one."
-    : "Click a pin to open its note. Drag to move it. Double-click the map to add one. Right-click a pin to remove it.";
+    ? "Tap a pin for its scenes. Press and hold the map to add one."
+    : "Hover a pin for its scenes, click to open its note, drag to move it. Double-click the map to add a pin, right-click one to remove it.";
   toolbar.append(titleEl, hint);
 
   const scroll = document.createElement("div");
@@ -44,11 +47,87 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   let writing = false;
   let disposed = false;
 
+  // ---- place cards ----
+  const cards = new Map<string, PlaceCard>();
+  let openCard: { pinEl: HTMLElement; card: PlaceCard } | null = null;
+  let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const cardFor = (target: string, label: string): PlaceCard => {
+    let card = cards.get(target);
+    if (!card) {
+      card = createPlaceCard(core, target, label);
+      card.el.addEventListener("mouseenter", cancelHide);
+      card.el.addEventListener("mouseleave", scheduleHide);
+      stage.appendChild(card.el);
+      cards.set(target, card);
+    }
+    return card;
+  };
+
+  const placeCard = (pinEl: HTMLElement, cardEl: HTMLElement) => {
+    const sw = stage.clientWidth;
+    const sh = stage.clientHeight;
+    const px = pinEl.offsetLeft;
+    const py = pinEl.offsetTop;
+    const w = cardEl.offsetWidth || 304;
+    const h = cardEl.offsetHeight || 240;
+    const half = (pinEl.offsetWidth || 0) / 2 + CARD_GAP;
+    let left = px + half;
+    let top = py - h / 2;
+    if (left + w > sw - 8) left = px - half - w;
+    if (left < 8) left = 8;
+    if (top < 8) top = 8;
+    if (top + h > sh - 8) top = Math.max(8, sh - h - 8);
+    cardEl.style.left = `${left}px`;
+    cardEl.style.top = `${top}px`;
+  };
+
+  const showCard = (pinEl: HTMLElement, pin: Pin) => {
+    cancelHide();
+    const target = model.targetOf(pin);
+    if (!target) return;
+    if (openCard && openCard.pinEl !== pinEl) hideCard();
+    const card = cardFor(target, model.labelOf(pin));
+    openCard = { pinEl, card };
+    pinEl.classList.add("lh-map-pin-open");
+    card.el.hidden = false;
+    placeCard(pinEl, card.el);
+    void card.load().then(() => {
+      if (openCard?.card === card) placeCard(pinEl, card.el);
+    });
+  };
+
+  const hideCard = () => {
+    cancelHide();
+    if (!openCard) return;
+    openCard.card.el.hidden = true;
+    openCard.pinEl.classList.remove("lh-map-pin-open");
+    openCard = null;
+  };
+
+  const scheduleHide = () => {
+    cancelHide();
+    hideTimer = setTimeout(hideCard, HIDE_DELAY);
+  };
+
+  function cancelHide() {
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = null;
+  }
+
+  const invalidateCards = () => {
+    for (const c of cards.values()) c.invalidate();
+    if (openCard) void openCard.card.load();
+  };
+
+  // ---- rendering ----
   const render = async () => {
     if (disposed) return;
     const note = await model.load();
     current = note;
     titleEl.textContent = note.title ?? path;
+    hideCard();
+    for (const c of cards.values()) c.el.remove();
     stage.replaceChildren();
     stage.classList.toggle("lh-map-blank", !note.imagePath);
 
@@ -76,6 +155,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     }
 
     note.pins.forEach((pin, index) => stage.appendChild(pinElement(pin, index)));
+    for (const c of cards.values()) stage.appendChild(c.el);
   };
 
   const pinElement = (pin: Pin, index: number): HTMLElement => {
@@ -111,6 +191,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     pinEl.addEventListener("pointermove", (ev) => {
       if (!pressed) return;
       if (!dragging && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD) return;
+      if (!dragging) hideCard();
       dragging = true;
       pinEl.classList.add("lh-map-pin-dragging");
       const { x, y } = fractionAt(ev.clientX, ev.clientY);
@@ -125,6 +206,10 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
       if (dragging) {
         const { x, y } = fractionAt(ev.clientX, ev.clientY);
         await write(() => model.movePin(index, x, y));
+      } else if (core.host.isMobile || ev.pointerType === "touch") {
+        // no hover on touch: a tap shows the card, whose name opens the note
+        if (openCard?.pinEl === pinEl) hideCard();
+        else showCard(pinEl, pin);
       } else {
         await open(pin);
       }
@@ -136,6 +221,10 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
       pinEl.classList.remove("lh-map-pin-dragging");
       void render();
     });
+    pinEl.addEventListener("mouseenter", () => showCard(pinEl, pin));
+    pinEl.addEventListener("mouseleave", scheduleHide);
+    pinEl.addEventListener("focus", () => showCard(pinEl, pin));
+    pinEl.addEventListener("blur", scheduleHide);
     pinEl.addEventListener("contextmenu", (ev) => {
       ev.preventDefault();
       void remove(pin, index);
@@ -146,6 +235,8 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
       if (key === "Enter" || key === " ") {
         ev.preventDefault();
         void open(pin);
+      } else if (key === "Escape") {
+        hideCard();
       } else if (key === "Delete" || key === "Backspace") {
         ev.preventDefault();
         void remove(pin, index);
@@ -189,6 +280,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   };
 
   const remove = async (pin: Pin, index: number) => {
+    hideCard();
     const ok = await core.host.confirm(`Remove the pin "${model.labelOf(pin)}"? The note it points at is untouched.`, "Remove pin");
     if (!ok) return;
     await write(() => model.removePin(index));
@@ -208,14 +300,17 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   };
 
   stage.addEventListener("dblclick", (ev) => {
-    if ((ev.target as HTMLElement).closest(".lh-map-pin")) return;
+    if ((ev.target as HTMLElement).closest(".lh-map-pin, .lh-map-card")) return;
     void add(ev.clientX, ev.clientY);
+  });
+  stage.addEventListener("pointerdown", (ev) => {
+    if (!(ev.target as HTMLElement).closest(".lh-map-pin, .lh-map-card")) hideCard();
   });
 
   // long press on touch adds a pin
   let pressTimer: ReturnType<typeof setTimeout> | null = null;
   stage.addEventListener("pointerdown", (ev) => {
-    if (ev.pointerType !== "touch" || (ev.target as HTMLElement).closest(".lh-map-pin")) return;
+    if (ev.pointerType !== "touch" || (ev.target as HTMLElement).closest(".lh-map-pin, .lh-map-card")) return;
     pressTimer = setTimeout(() => void add(ev.clientX, ev.clientY), 550);
   });
   const clearPress = () => {
@@ -228,7 +323,12 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
 
   const unsubscribe = core.host.onFileChanged((change) => {
     if (writing) return;
-    if (change.path === path || (current?.imagePath && change.path === current.imagePath)) void render();
+    if (change.path === path || (current?.imagePath && change.path === current.imagePath)) {
+      void render();
+      return;
+    }
+    // any other note may have gained or lost a mention
+    invalidateCards();
   });
 
   void render();
@@ -236,6 +336,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   return {
     destroy() {
       disposed = true;
+      cancelHide();
       unsubscribe();
       root.remove();
     },

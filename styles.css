@@ -8,6 +8,8 @@
   --lh-rule: #cfd2cc;
   --lh-removed: #a8322b;
   --lh-added: #2f6f4e;
+  --lh-added-wash: #dcebe2;
+  --lh-removed-wash: #f4dedc;
   --lh-font-body: "Newsreader", Georgia, "Times New Roman", serif;
   --lh-font-ui: var(--font-interface, system-ui, sans-serif);
   --lh-card-radius: 2px;
@@ -21,6 +23,8 @@
   --lh-ink: #f3f4f1;
   --lh-graphite: #a5a9b0;
   --lh-rule: #3a4150;
+  --lh-added-wash: #27402f;
+  --lh-removed-wash: #4a2a27;
 }
 
 /* ---- map ---- */
@@ -170,4 +174,161 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+/* ---- place card ---- */
+
+.lh-map-card {
+  position: absolute;
+  z-index: 5;
+  width: 19rem;
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--lh-paper);
+  color: var(--lh-ink);
+  border: 1px solid var(--lh-rule);
+  box-shadow: 0 6px 18px rgba(30, 36, 50, 0.12);
+  font-size: 0.85rem;
+  cursor: default;
+  user-select: text;
+}
+
+.lh-map-card[hidden] {
+  display: none;
+}
+
+.lh-map-card-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.7rem 0.9rem 0.5rem;
+  background: var(--lh-paper);
+  border-bottom: 1px solid var(--lh-rule);
+}
+
+.lh-map-card-name {
+  display: block;
+  font-family: var(--lh-font-body);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--lh-ink);
+  text-decoration: none;
+}
+
+.lh-map-card-name:hover {
+  text-decoration: underline;
+}
+
+.lh-map-card-meta {
+  display: block;
+  color: var(--lh-graphite);
+  font-size: 0.78rem;
+}
+
+.lh-map-card-head input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.55rem 0 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--lh-rule);
+  background: var(--lh-paper-deep);
+  color: var(--lh-ink);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.lh-map-card-attachments {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 0.9rem 0;
+  overflow-x: auto;
+}
+
+.lh-map-card-attachments[hidden] {
+  display: none;
+}
+
+.lh-map-card-attachments figure {
+  margin: 0;
+  flex: 0 0 5.2rem;
+  cursor: pointer;
+}
+
+.lh-map-card-attachments img,
+.lh-map-card-note {
+  display: block;
+  width: 100%;
+  height: 3.4rem;
+  object-fit: cover;
+  border: 1px solid var(--lh-rule);
+  border-radius: var(--lh-card-radius);
+  background: var(--lh-paper-deep);
+}
+
+.lh-map-card-note {
+  display: grid;
+  place-items: center;
+  color: var(--lh-graphite);
+  font-size: 0.7rem;
+  background: repeating-linear-gradient(var(--lh-paper) 0 0.35rem, var(--lh-rule) 0.35rem 0.38rem);
+}
+
+.lh-map-card-attachments figcaption {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  color: var(--lh-graphite);
+}
+
+.lh-map-card-scenes {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0 0.9rem 0.6rem;
+}
+
+.lh-map-card-scenes li {
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--lh-rule);
+  cursor: pointer;
+}
+
+.lh-map-card-scenes li:first-child {
+  border-top: 0;
+}
+
+.lh-map-card-scenes li:hover .lh-map-card-title,
+.lh-map-card-scenes li:focus-visible .lh-map-card-title {
+  text-decoration: underline;
+}
+
+.lh-map-card-chapter {
+  color: var(--lh-graphite);
+  font-size: 0.75rem;
+}
+
+.lh-map-card-title {
+  font-weight: 600;
+}
+
+.lh-map-card-excerpt {
+  color: var(--lh-graphite);
+  font-family: var(--lh-font-body);
+  font-size: 0.85rem;
+}
+
+.lh-map-card-excerpt mark {
+  background: var(--lh-added-wash, #dcebe2);
+  color: inherit;
+}
+
+.lh-map-card-none {
+  padding: 0.5rem 0.9rem 0.7rem;
+  color: var(--lh-graphite);
+}
+
+.lh-map-pin-open .lh-map-tag {
+  background: var(--lh-ink);
+  color: var(--lh-paper);
 }
