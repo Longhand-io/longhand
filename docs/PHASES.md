@@ -155,10 +155,11 @@ phases:
           - { id: L7.1-a2, met: false, check: "a map note with an Inkarnate PNG export at 2k and the same map at 8k show pins in the same places", method: manual }
       - id: L7.2
         title: Place cards
-        status: planned
-        depends_on: [L6]
-        deliverables: []
-        acceptance: []
+        status: in_progress
+        deliverables:
+          - { id: L7.2-d1, done: true, desc: "hover or focus a pin: name and kind, aliases, attachments strip, scene search, scenes in binder order with the sentence that names the place marked; links always count, whole-word name matches when the note has match_names: true; click a scene to open it", note: "2026-09-14: src/core/appearances.ts is the engine, shared with the cast module later; src/modules/map/card.ts the card; tests/appearances.test.ts. Did not need L6 after all: appearances are computed from links and names, not from the cast panel." }
+        acceptance:
+          - { id: L7.2-a1, met: false, check: "in the test vault, hover the Stillwater crossing pin: two scenes listed with the mention highlighted, one image in the strip; edit a scene to add a link and the card updates without reopening the map", method: manual }
   - id: L8
     title: Themes and templates
     status: planned
