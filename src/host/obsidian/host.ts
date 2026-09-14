@@ -1,0 +1,336 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 0xSpectra LLC and the Longhand Authors.
+
+// The Obsidian host. The only place outside this folder's siblings that imports `obsidian`.
+
+import {
+  FuzzySuggestModal,
+  ItemView,
+  Modal,
+  Notice,
+  Platform,
+  Plugin,
+  TFile,
+  WorkspaceLeaf,
+  normalizePath,
+} from "obsidian";
+import type { App } from "obsidian";
+import { IMAGE_EXTENSIONS } from "../../modules/map/model.js";
+import type { Command, FileChange, Host, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
+
+export class ObsidianHost implements Host {
+  readonly isMobile: boolean = Platform.isMobile;
+  private readonly app: App;
+  private listeners = new Set<(c: FileChange) => void>();
+  private factories = new Map<string, ViewFactory>();
+
+  constructor(private readonly plugin: Plugin) {
+    this.app = plugin.app;
+    const emit = (c: FileChange) => {
+      for (const l of this.listeners) l(c);
+    };
+    plugin.registerEvent(this.app.vault.on("modify", (f) => emit({ kind: "modify", path: f.path })));
+    plugin.registerEvent(this.app.vault.on("create", (f) => emit({ kind: "create", path: f.path })));
+    plugin.registerEvent(this.app.vault.on("delete", (f) => emit({ kind: "delete", path: f.path })));
+    plugin.registerEvent(this.app.vault.on("rename", (f, old) => emit({ kind: "rename", path: f.path, oldPath: old })));
+  }
+
+  private file(path: string): TFile | null {
+    const f = this.app.vault.getAbstractFileByPath(normalizePath(path));
+    return f instanceof TFile ? f : null;
+  }
+
+  async readFile(path: string): Promise<string> {
+    const f = this.file(path);
+    if (!f) throw new Error(`no such file: ${path}`);
+    return this.app.vault.read(f);
+  }
+
+  async writeFile(path: string, text: string): Promise<void> {
+    const f = this.file(path);
+    if (f) {
+      await this.app.vault.modify(f, text);
+      return;
+    }
+    const norm = normalizePath(path);
+    const slash = norm.lastIndexOf("/");
+    if (slash > 0) {
+      const dir = norm.slice(0, slash);
+      if (!this.app.vault.getAbstractFileByPath(dir)) await this.app.vault.createFolder(dir);
+    }
+    await this.app.vault.create(norm, text);
+  }
+
+  exists(path: string): boolean {
+    return this.app.vault.getAbstractFileByPath(normalizePath(path)) !== null;
+  }
+
+  listFiles(): string[] {
+    return this.app.vault.getFiles().map((f) => f.path);
+  }
+
+  onFileChanged(cb: (change: FileChange) => void): () => void {
+    this.listeners.add(cb);
+    return () => this.listeners.delete(cb);
+  }
+
+  cachedFrontmatter(path: string): { [key: string]: unknown } | null {
+    const f = this.file(path);
+    if (!f) return null;
+    const fm = this.app.metadataCache.getFileCache(f)?.frontmatter;
+    return fm ? (fm as { [key: string]: unknown }) : null;
+  }
+
+  resolveLink(target: string, from: string): string | null {
+    return this.app.metadataCache.getFirstLinkpathDest(target, from)?.path ?? null;
+  }
+
+  linkTo(path: string, from: string): string {
+    const f = this.file(path);
+    if (!f) return `[[${path.replace(/\.md$/i, "")}]]`;
+    const short = f.extension === "md" ? f.basename : f.name;
+    const resolved = this.app.metadataCache.getFirstLinkpathDest(short, from);
+    if (resolved && resolved.path === f.path) return `[[${short}]]`;
+    return `[[${f.extension === "md" ? f.path.replace(/\.md$/i, "") : f.path}]]`;
+  }
+
+  resourceUrl(path: string): string {
+    const f = this.file(path);
+    return f ? this.app.vault.getResourcePath(f) : "";
+  }
+
+  activeFile(): string | null {
+    return this.app.workspace.getActiveFile()?.path ?? null;
+  }
+
+  async openNote(path: string): Promise<void> {
+    const f = this.file(path);
+    if (!f) return;
+    await this.app.workspace.getLeaf(false).openFile(f);
+  }
+
+  registerView(type: string, factory: ViewFactory): void {
+    this.factories.set(type, factory);
+    this.plugin.registerView(type, (leaf) => new HostView(leaf, type, factory));
+  }
+
+  async openView(type: string, state: ViewState): Promise<void> {
+    const existing = this.app.workspace
+      .getLeavesOfType(type)
+      .find((l) => (l.view as HostView).currentPath() === state.path);
+    if (existing) {
+      this.app.workspace.revealLeaf(existing);
+      return;
+    }
+    const leaf = this.app.workspace.getLeaf("tab");
+    await leaf.setViewState({ type, state: { path: state.path }, active: true });
+    this.app.workspace.revealLeaf(leaf);
+  }
+
+  registerCommand(cmd: Command): void {
+    this.plugin.addCommand({
+      id: cmd.id,
+      name: cmd.name,
+      checkCallback: (checking) => {
+        if (cmd.check && !cmd.check()) return false;
+        if (!checking) void cmd.run();
+        return true;
+      },
+    });
+  }
+
+  pickFile(kind: PickKind, placeholder: string): Promise<string | null> {
+    const files = this.app.vault
+      .getFiles()
+      .filter((f) => (kind === "note" ? f.extension === "md" : IMAGE_EXTENSIONS.includes(f.extension.toLowerCase())))
+      .sort((a, b) => a.path.localeCompare(b.path));
+    return new Promise((resolve) => {
+      new FilePicker(this.app, files, placeholder, resolve).open();
+    });
+  }
+
+  prompt(title: string, initial = ""): Promise<string | null> {
+    return new Promise((resolve) => new PromptModal(this.app, title, initial, resolve).open());
+  }
+
+  confirm(message: string, action: string): Promise<boolean> {
+    return new Promise((resolve) => new ConfirmModal(this.app, message, action, resolve).open());
+  }
+
+  notify(message: string): void {
+    new Notice(message);
+  }
+}
+
+class HostView extends ItemView {
+  private state: ViewState = { path: "" };
+  private handle: ViewHandle | null = null;
+
+  constructor(
+    leaf: WorkspaceLeaf,
+    private readonly type: string,
+    private readonly factory: ViewFactory,
+  ) {
+    super(leaf);
+  }
+
+  currentPath(): string {
+    return this.state.path;
+  }
+
+  override getViewType(): string {
+    return this.type;
+  }
+
+  override getDisplayText(): string {
+    return this.state.path ? this.factory.title(this.state) : "Longhand";
+  }
+
+  override getIcon(): string {
+    return this.factory.icon;
+  }
+
+  override getState(): Record<string, unknown> {
+    return { path: this.state.path };
+  }
+
+  override async setState(state: unknown, result: { history: boolean }): Promise<void> {
+    const path = typeof state === "object" && state !== null ? (state as { path?: unknown }).path : undefined;
+    this.state = { path: typeof path === "string" ? path : "" };
+    this.mount();
+    await super.setState(state, result);
+  }
+
+  override async onOpen(): Promise<void> {
+    this.mount();
+  }
+
+  override async onClose(): Promise<void> {
+    this.handle?.destroy();
+    this.handle = null;
+  }
+
+  private mount(): void {
+    this.handle?.destroy();
+    this.handle = null;
+    const container = this.contentEl;
+    container.empty();
+    if (!this.state.path) return;
+    this.handle = this.factory.mount(container, this.state);
+  }
+}
+
+class FilePicker extends FuzzySuggestModal<TFile> {
+  private settled = false;
+
+  constructor(
+    app: App,
+    private readonly files: TFile[],
+    placeholder: string,
+    private readonly resolve: (path: string | null) => void,
+  ) {
+    super(app);
+    this.setPlaceholder(placeholder);
+  }
+
+  getItems(): TFile[] {
+    return this.files;
+  }
+
+  getItemText(item: TFile): string {
+    return item.path;
+  }
+
+  onChooseItem(item: TFile): void {
+    this.settled = true;
+    this.resolve(item.path);
+  }
+
+  override onClose(): void {
+    super.onClose();
+    if (!this.settled) {
+      this.settled = true;
+      this.resolve(null);
+    }
+  }
+}
+
+class PromptModal extends Modal {
+  private settled = false;
+
+  constructor(
+    app: App,
+    private readonly title: string,
+    private readonly initial: string,
+    private readonly resolve: (value: string | null) => void,
+  ) {
+    super(app);
+  }
+
+  override onOpen(): void {
+    this.titleEl.setText(this.title);
+    const input = this.contentEl.createEl("input", { type: "text", value: this.initial });
+    input.addClass("lh-prompt-input");
+    const done = () => {
+      this.settled = true;
+      this.resolve(input.value);
+      this.close();
+    };
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        done();
+      }
+    });
+    const row = this.contentEl.createDiv({ cls: "lh-modal-buttons" });
+    const ok = row.createEl("button", { text: "OK", cls: "mod-cta" });
+    ok.addEventListener("click", done);
+    const cancel = row.createEl("button", { text: "Cancel" });
+    cancel.addEventListener("click", () => this.close());
+    input.focus();
+    input.select();
+  }
+
+  override onClose(): void {
+    this.contentEl.empty();
+    if (!this.settled) {
+      this.settled = true;
+      this.resolve(null);
+    }
+  }
+}
+
+class ConfirmModal extends Modal {
+  private settled = false;
+
+  constructor(
+    app: App,
+    private readonly message: string,
+    private readonly action: string,
+    private readonly resolve: (ok: boolean) => void,
+  ) {
+    super(app);
+  }
+
+  override onOpen(): void {
+    this.contentEl.createEl("p", { text: this.message });
+    const row = this.contentEl.createDiv({ cls: "lh-modal-buttons" });
+    const ok = row.createEl("button", { text: this.action, cls: "mod-warning" });
+    ok.addEventListener("click", () => {
+      this.settled = true;
+      this.resolve(true);
+      this.close();
+    });
+    const cancel = row.createEl("button", { text: "Cancel" });
+    cancel.addEventListener("click", () => this.close());
+    cancel.focus();
+  }
+
+  override onClose(): void {
+    this.contentEl.empty();
+    if (!this.settled) {
+      this.settled = true;
+      this.resolve(false);
+    }
+  }
+}
