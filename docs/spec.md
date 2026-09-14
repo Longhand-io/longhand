@@ -86,7 +86,7 @@ label: Red                                  # the thread this character carries 
 ---
 ```
 
-Appearances are never stored. A character appears in a scene when the scene links to the character's note, or, if the writer turns on name matching for that character, when the scene's text contains the title or an alias as a whole word. Readers compute appearances from the manuscript in order; the cast panel is a view, not a record, so it can never be out of date.
+Appearances are never stored. A character appears in a scene when the scene links to the character's note, or, if the note carries `match_names: true`, when the scene's text contains the title or an alias as a whole word, case-insensitively. Readers compute appearances from the manuscript in order; the cast panel is a view, not a record, so it can never be out of date.
 
 The same rule gives a place its scenes. A map pin whose `to` is a setting note can show every chapter and scene set there, the sentence that names it, and the setting's `attachments` (images and notes pinned for inspiration), all computed at view time. Nothing on the map duplicates anything in the manuscript.
 
