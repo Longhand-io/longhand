@@ -1,0 +1,173 @@
+/* Longhand. Apache-2.0. Every panel draws from --lh- tokens; a theme overrides them on .lh-root. */
+
+.lh-root {
+  --lh-paper: #f3f4f1;
+  --lh-paper-deep: #e9ebe6;
+  --lh-ink: #1e2432;
+  --lh-graphite: #676b72;
+  --lh-rule: #cfd2cc;
+  --lh-removed: #a8322b;
+  --lh-added: #2f6f4e;
+  --lh-font-body: "Newsreader", Georgia, "Times New Roman", serif;
+  --lh-font-ui: var(--font-interface, system-ui, sans-serif);
+  --lh-card-radius: 2px;
+  color: var(--lh-ink);
+  font-family: var(--lh-font-ui);
+}
+
+.theme-dark .lh-root {
+  --lh-paper: #1e2432;
+  --lh-paper-deep: #171c27;
+  --lh-ink: #f3f4f1;
+  --lh-graphite: #a5a9b0;
+  --lh-rule: #3a4150;
+}
+
+/* ---- map ---- */
+
+.lh-map {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--lh-paper-deep);
+}
+
+.lh-map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--lh-rule);
+  background: var(--lh-paper);
+}
+
+.lh-map-title {
+  font-family: var(--lh-font-body);
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.lh-map-hint {
+  color: var(--lh-graphite);
+  font-size: 0.8rem;
+}
+
+.lh-map-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.lh-map-stage {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 10;
+  background: var(--lh-paper);
+  border: 1px solid var(--lh-rule);
+  border-radius: var(--lh-card-radius);
+  overflow: visible;
+  user-select: none;
+  touch-action: none;
+}
+
+.lh-map-stage.lh-map-blank {
+  background-color: var(--lh-paper);
+  background-image:
+    linear-gradient(var(--lh-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--lh-rule) 1px, transparent 1px);
+  background-size: 10% 10%;
+}
+
+.lh-map-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: var(--lh-card-radius);
+  pointer-events: none;
+}
+
+.lh-map-missing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--lh-removed);
+  font-size: 0.9rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.lh-map-pin {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  cursor: grab;
+  outline: none;
+}
+
+.lh-map-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.3rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  background: var(--lh-ink);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 0 2px var(--lh-paper);
+}
+
+.lh-map-pin-unresolved::after {
+  background: var(--lh-removed);
+}
+
+.lh-map-tag {
+  display: block;
+  margin-bottom: 0.45rem;
+  padding: 0.15rem 0.5rem;
+  font-family: var(--lh-font-body);
+  font-size: 0.85rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--lh-ink);
+  background: var(--lh-paper);
+  border: 1px solid var(--lh-ink);
+  border-radius: var(--lh-card-radius);
+}
+
+.lh-map-pin-unresolved .lh-map-tag {
+  border-style: dashed;
+  color: var(--lh-graphite);
+}
+
+.lh-map-pin:hover .lh-map-tag,
+.lh-map-pin:focus-visible .lh-map-tag {
+  background: var(--lh-ink);
+  color: var(--lh-paper);
+}
+
+.lh-map-pin-dragging {
+  cursor: grabbing;
+  z-index: 2;
+}
+
+.lh-map-pin-dragging .lh-map-tag {
+  opacity: 0.85;
+}
+
+/* ---- modals ---- */
+
+.lh-prompt-input {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.lh-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
