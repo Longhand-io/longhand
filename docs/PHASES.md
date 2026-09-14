@@ -2,7 +2,7 @@
 repo: longhand
 schema: phases/v1
 current_phase: L1
-updated: 2026-09-12
+updated: 2026-09-14
 updated_by: grassclaw
 
 phases:
@@ -50,31 +50,31 @@ phases:
 
   - id: L2
     title: Plugin core
-    status: planned
+    status: in_progress
     depends_on: []
     subphases:
       - id: L2.1
         title: Scaffold, settings tab, module loader
-        status: planned
+        status: in_progress
         deliverables:
-          - { id: L2.1-d1, done: false, desc: "TypeScript plugin on the Obsidian API, esbuild, manifest; one settings tab with a section per module and an on/off switch each; core never imports a module" }
-          - { id: L2.1-d2, done: false, desc: "npm run gate: type-check, lint, unit tests" }
+          - { id: L2.1-d1, done: true, desc: "TypeScript plugin on the Obsidian API, esbuild, manifest; one settings tab with a section per module and an on/off switch each; core never imports a module", note: "2026-09-14: src/main.ts composes host, core, and the module list; modules see only the Host interface (src/host/host.ts); the Obsidian API is imported only under src/host/obsidian/" }
+          - { id: L2.1-d2, done: true, desc: "npm run gate: type-check, lint, unit tests", note: "2026-09-14: strict tsc, node --test, production build, licence headers; no lint package, the strict compiler options stand in" }
         acceptance:
           - { id: L2.1-a1, met: false, check: "plugin loads in Obsidian desktop and mobile with zero modules on and does nothing", method: manual }
       - id: L2.2
         title: Spec reader and writer
-        status: planned
+        status: done
         deliverables:
-          - { id: L2.2-d1, done: false, desc: "read and write document and project frontmatter by field; preserve unknown fields byte for byte; version check on _Project.md" }
+          - { id: L2.2-d1, done: true, desc: "read and write document and project frontmatter by field; preserve unknown fields byte for byte; version check on _Project.md", note: "2026-09-14: src/core/frontmatter.ts keeps every top-level entry's raw lines and rewrites only the field that changed; src/core/spec.ts; newer spec versions warn once" }
         acceptance:
-          - { id: L2.2-a1, met: false, check: "round-trip a note with unknown fields and comments in its frontmatter; diff is empty", method: unit }
+          - { id: L2.2-a1, met: true, check: "round-trip a note with unknown fields and comments in its frontmatter; diff is empty", method: unit, note: "2026-09-14: tests/frontmatter.test.ts, first case" }
       - id: L2.3
         title: Project registry
-        status: planned
+        status: done
         deliverables:
-          - { id: L2.3-d1, done: false, desc: "find project roots (_Project.md), list documents in binder order from numeric prefixes or order fields, resolve id to path and path to id, watch for changes" }
+          - { id: L2.3-d1, done: true, desc: "find project roots (_Project.md), list documents in binder order from numeric prefixes or order fields, resolve id to path and path to id, watch for changes", note: "2026-09-14: src/core/projects.ts; the index drops on any host file change and rebuilds lazily" }
         acceptance:
-          - { id: L2.3-a1, met: false, check: "an imported fixture vault lists documents in the same order as the Scrivener binder", method: unit }
+          - { id: L2.3-a1, met: true, check: "an imported fixture vault lists documents in the same order as the Scrivener binder", method: unit, note: "2026-09-14: tests/projects.test.ts against the importer fixture's layout" }
       - id: L2.4
         title: History store, files backend
         status: planned
@@ -141,9 +141,24 @@ phases:
     subphases: []
   - id: L7
     title: Map, flat, with place cards
-    status: planned
-    depends_on: [L6]
-    subphases: []
+    status: in_progress
+    depends_on: [L2]
+    note: "Pulled ahead of L3 to L6 on 2026-09-14 as the first module to build on the core, because it is the most demo-able surface and exercises the same frontmatter writer every other module needs. The flat map needs only L2; place cards (L7.2) still need the cast module."
+    subphases:
+      - id: L7.1
+        title: Flat map with pins
+        status: in_progress
+        deliverables:
+          - { id: L7.1-d1, done: true, desc: "map view for a type: map note: the image or a blank canvas, pins at fractional coordinates, click to open, drag to move, double-click to add, remove, relabel, keyboard nudge; every change writes only pins; commands Open as map, New map, Set map image", note: "2026-09-14: src/modules/map; model tested against the memory host in tests/map.test.ts; DOM view untested" }
+        acceptance:
+          - { id: L7.1-a1, met: false, check: "in Obsidian, open a map note as a map, drag a pin, add one, remove one; git diff of the note shows only the pins block changing; the image never moves", method: manual }
+          - { id: L7.1-a2, met: false, check: "a map note with an Inkarnate PNG export at 2k and the same map at 8k show pins in the same places", method: manual }
+      - id: L7.2
+        title: Place cards
+        status: planned
+        depends_on: [L6]
+        deliverables: []
+        acceptance: []
   - id: L8
     title: Themes and templates
     status: planned

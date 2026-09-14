@@ -9,7 +9,18 @@ Thank you. This is a small project with one maintainer, so the rules below exist
 
 ## Building and testing
 
-The plugin is TypeScript on the Obsidian API. Until the scaffold lands (phase L2 in `docs/PHASES.md`) there is no build; docs changes are gated by reading them. Once it lands: `npm ci && npm run gate` runs type-check, lint, unit tests, and a spec conformance suite against `docs/spec.md`.
+The plugin is TypeScript on the Obsidian API, bundled with esbuild. Node 22 or later.
+
+```
+npm ci
+npm run gate
+```
+
+The gate is strict type-check, the unit tests (Node's own runner, no test framework), the production build, and the licence-header check. It is the gate named in every PR. `npm run dev` rebuilds on save.
+
+Modules never import `obsidian`; they are written against the host interface in `src/host/host.ts`, which `src/host/obsidian/` implements and `src/host/memory.ts` fakes for tests. Keep it that way: a module that reaches for the Obsidian API directly will not be merged.
+
+To try a build in a vault, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/longhand/` and enable Longhand under Community plugins.
 
 ## Developer Certificate of Origin
 

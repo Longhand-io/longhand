@@ -2,7 +2,7 @@
 
 **The writing studio for Obsidian.** Binder, snapshots with live compare, inspector, corkboard, timeline, research, compile. One plugin, one settings page, every module switchable, and everything stored as Markdown, frontmatter, and git commits you can read with nothing installed.
 
-> Status: design phase. The [importer](https://github.com/Longhand-io/scrivener-to-obsidian) is under active development; the plugin follows. Watch the repo or open a discussion if you write long-form in Obsidian and want in early.
+> Status: pre-release. The [importer](https://github.com/Longhand-io/scrivener-to-obsidian) is feature complete for v0.1. The plugin core and the first module, Map, build and pass their tests; nothing is published yet. Watch the repo or open a discussion if you write long-form in Obsidian and want in early.
 
 ## What changes when you install it
 
