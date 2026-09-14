@@ -92,7 +92,11 @@ The same rule gives a place its scenes. A map pin whose `to` is a setting note c
 
 ## Map notes
 
-A map is a note with `type: map`, an `image` that points at a picture in the vault, and `pins`. Coordinates are fractions of the image width and height so the map can be re-exported at any size. An optional `relief` field points at a heightmap image or a model file; a reader that can render relief uses it, and one that cannot shows the flat image, with the same pins in both.
+A map is a note with `type: map` and `pins`. It draws either an `image`, a wikilink to a picture in the vault, or, when there is no image, a blank canvas whose shape comes from `width` and `height`. Pin coordinates are fractions of the drawn width and height, so the same pins fit a 2k export and a 16k export of the same map, and a blank canvas can be given an image later without moving anything.
+
+- `image` may be any picture the host can draw. PNG, JPEG, and WebP are the formats every map tool exports and the ones readers must support; SVG is allowed and must carry a `viewBox`.
+- `width` and `height` are required when `image` is absent and ignored when it is present. They are unitless; only the ratio matters.
+- An optional `relief` field points at height data for a reader that can render the map in three dimensions: a 16-bit greyscale PNG heightmap that shares the image's frame, or a glTF or GLB model. A reader that cannot render relief shows the flat map with the same pins.
 
 ```yaml
 ---
@@ -111,7 +115,20 @@ pins:
 ---
 ```
 
-A pin's `to` is a wikilink to any note. Nothing is stored on the target, so deleting a map deletes only its pins.
+A pin's `to` is a wikilink to any note; `label` is optional and defaults to the note's name. `x` and `y` are clamped to the range 0 to 1 by readers. Nothing is stored on the target, so deleting a map deletes only its pins, and a pin whose note has gone is kept and shown as unresolved rather than dropped.
+
+A blank canvas:
+
+```yaml
+---
+id: 7A1F3C9D-2B84-4E5A-9C61-0D3F8B2E4A17
+type: map
+title: The lower town
+width: 1600
+height: 1000
+pins: []
+---
+```
 
 ## Project note
 
