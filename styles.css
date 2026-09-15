@@ -54,8 +54,25 @@
 }
 
 .lh-map-hint {
+  flex: 1;
   color: var(--lh-graphite);
   font-size: 0.8rem;
+}
+
+.lh-map-edit {
+  margin-left: auto;
+  padding: 0.2rem 0.6rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--lh-ink);
+  background: var(--lh-paper);
+  border: 1px solid var(--lh-rule);
+  border-radius: var(--lh-card-radius);
+  cursor: pointer;
+}
+
+.lh-map-edit:hover {
+  border-color: var(--lh-ink);
 }
 
 .lh-map-scroll {

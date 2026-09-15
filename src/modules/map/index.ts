@@ -30,12 +30,22 @@ export const mapModule: Module = {
       mount: (el, state) => mountMapView(core, el, state.path),
     });
 
+    const isMap = (path: string): boolean => host.cachedFrontmatter(path)?.["type"] === "map";
+
     const activeIsMap = (): string | null => {
       const path = host.activeFile();
-      if (!path) return null;
-      const fm = host.cachedFrontmatter(path);
-      return fm?.["type"] === "map" ? path : null;
+      return path && isMap(path) ? path : null;
     };
+
+    // a map note opens as a map; the view's "Edit note" button is the way back to the text
+    host.registerAutoView(MAP_VIEW, isMap);
+
+    host.registerFileMenu({
+      label: "Open as map",
+      icon: "map",
+      check: isMap,
+      run: (path) => host.openView(MAP_VIEW, { path }),
+    });
 
     host.registerCommand({
       id: "map-open",

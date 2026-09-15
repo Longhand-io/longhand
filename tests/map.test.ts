@@ -130,6 +130,11 @@ test("module registers the view and three commands; open as map only when the ac
   const core = createCore(host);
   await mapModule.register(core);
   assert.ok(host.views.has("longhand-map"));
+  assert.equal(host.autoViews.length, 1);
+  assert.equal(host.autoViews[0]!.when("Novel/Maps/Whitby.md"), true);
+  assert.equal(host.autoViews[0]!.when("Novel/Manuscript/02 The Tin.md"), false);
+  assert.equal(host.fileMenu.length, 1);
+  assert.equal(host.fileMenu[0]!.check("Novel/Maps/Whitby.md"), true);
   assert.deepEqual([...host.commands.keys()].sort(), ["map-new", "map-open", "map-set-image"]);
   host.active = "Novel/Manuscript/02 The Tin.md";
   assert.equal(host.commands.get("map-open")!.check!(), false);

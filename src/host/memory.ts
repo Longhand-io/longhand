@@ -5,7 +5,7 @@
 
 import { parse, get } from "../core/frontmatter.js";
 import { linkTarget } from "../core/wikilink.js";
-import type { Command, FileChange, Host, PickKind, ViewFactory, ViewState } from "./host.js";
+import type { Command, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewState } from "./host.js";
 
 export class MemoryHost implements Host {
   readonly isMobile = false;
@@ -15,6 +15,9 @@ export class MemoryHost implements Host {
   views = new Map<string, ViewFactory>();
   openedViews: { type: string; state: ViewState }[] = [];
   commands = new Map<string, Command>();
+  autoViews: { type: string; when: (path: string) => boolean }[] = [];
+  fileMenu: FileMenuItem[] = [];
+  openedAsMarkdown: string[] = [];
   active: string | null = null;
   /** queued answers for pickFile, prompt, confirm */
   picks: (string | null)[] = [];
@@ -95,6 +98,18 @@ export class MemoryHost implements Host {
 
   async openView(type: string, state: ViewState): Promise<void> {
     this.openedViews.push({ type, state });
+  }
+
+  registerAutoView(type: string, when: (path: string) => boolean): void {
+    this.autoViews.push({ type, when });
+  }
+
+  async openNoteAsMarkdown(path: string): Promise<void> {
+    this.openedAsMarkdown.push(path);
+  }
+
+  registerFileMenu(item: FileMenuItem): void {
+    this.fileMenu.push(item);
   }
 
   registerCommand(cmd: Command): void {

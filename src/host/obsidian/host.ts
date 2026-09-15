@@ -6,6 +6,7 @@
 import {
   FuzzySuggestModal,
   ItemView,
+  MarkdownView,
   Modal,
   Notice,
   Platform,
@@ -16,13 +17,16 @@ import {
 } from "obsidian";
 import type { App } from "obsidian";
 import { IMAGE_EXTENSIONS } from "../../modules/map/model.js";
-import type { Command, FileChange, Host, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
+import type { Command, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
 
 export class ObsidianHost implements Host {
   readonly isMobile: boolean = Platform.isMobile;
   private readonly app: App;
   private listeners = new Set<(c: FileChange) => void>();
   private factories = new Map<string, ViewFactory>();
+  private autoViews: { type: string; when: (path: string) => boolean }[] = [];
+  /** paths to open as plain Markdown once, skipping the auto view */
+  private bypass = new Set<string>();
 
   constructor(private readonly plugin: Plugin) {
     this.app = plugin.app;
@@ -33,6 +37,21 @@ export class ObsidianHost implements Host {
     plugin.registerEvent(this.app.vault.on("create", (f) => emit({ kind: "create", path: f.path })));
     plugin.registerEvent(this.app.vault.on("delete", (f) => emit({ kind: "delete", path: f.path })));
     plugin.registerEvent(this.app.vault.on("rename", (f, old) => emit({ kind: "rename", path: f.path, oldPath: old })));
+    plugin.registerEvent(this.app.workspace.on("file-open", (file) => this.maybeSwap(file)));
+  }
+
+  /** A note just opened in the active pane as Markdown; swap in the auto view if one claims it. */
+  private maybeSwap(file: TFile | null): void {
+    if (!file || file.extension !== "md") return;
+    if (this.bypass.delete(file.path)) return;
+    const auto = this.autoViews.find((a) => a.when(file.path));
+    if (!auto) return;
+    const leaf = this.app.workspace.getLeaf(false);
+    const view = leaf.view;
+    if (!(view instanceof MarkdownView) || view.file?.path !== file.path) return;
+    const state = { path: file.path };
+    // let Obsidian finish opening the Markdown view before replacing it
+    window.setTimeout(() => void leaf.setViewState({ type: auto.type, state, active: true }), 0);
   }
 
   private file(path: string): TFile | null {
@@ -125,6 +144,31 @@ export class ObsidianHost implements Host {
     const leaf = this.app.workspace.getLeaf("tab");
     await leaf.setViewState({ type, state: { path: state.path }, active: true });
     this.app.workspace.revealLeaf(leaf);
+  }
+
+  registerAutoView(type: string, when: (path: string) => boolean): void {
+    this.autoViews.push({ type, when });
+  }
+
+  async openNoteAsMarkdown(path: string): Promise<void> {
+    const f = this.file(path);
+    if (!f) return;
+    this.bypass.add(path);
+    await this.app.workspace.getLeaf(false).openFile(f);
+  }
+
+  registerFileMenu(item: FileMenuItem): void {
+    this.plugin.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (!(file instanceof TFile) || !item.check(file.path)) return;
+        menu.addItem((mi) =>
+          mi
+            .setTitle(item.label)
+            .setIcon(item.icon)
+            .onClick(() => void item.run(file.path)),
+        );
+      }),
+    );
   }
 
   registerCommand(cmd: Command): void {

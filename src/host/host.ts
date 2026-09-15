@@ -38,6 +38,14 @@ export interface Command {
 
 export type PickKind = "note" | "image";
 
+export interface FileMenuItem {
+  label: string;
+  icon: string;
+  /** sync; the item is shown only when this returns true for the file */
+  check: (path: string) => boolean;
+  run: (path: string) => void | Promise<void>;
+}
+
 export interface Host {
   readonly isMobile: boolean;
 
@@ -63,6 +71,11 @@ export interface Host {
   openNote(path: string): Promise<void>;
   registerView(type: string, factory: ViewFactory): void;
   openView(type: string, state: ViewState): Promise<void>;
+  /** when a note that satisfies `when` opens as plain Markdown, replace it with this view */
+  registerAutoView(type: string, when: (path: string) => boolean): void;
+  /** open a note as plain Markdown in the active pane, bypassing any auto view once */
+  openNoteAsMarkdown(path: string): Promise<void>;
+  registerFileMenu(item: FileMenuItem): void;
   registerCommand(cmd: Command): void;
   pickFile(kind: PickKind, placeholder: string): Promise<string | null>;
   prompt(title: string, initial?: string): Promise<string | null>;

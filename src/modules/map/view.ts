@@ -34,7 +34,13 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   hint.textContent = core.host.isMobile
     ? "Tap a pin for its scenes. Press and hold the map to add one."
     : "Hover a pin for its scenes, click to open its note, drag to move it. Double-click the map to add a pin, right-click one to remove it.";
-  toolbar.append(titleEl, hint);
+  const edit = document.createElement("button");
+  edit.className = "lh-map-edit";
+  edit.type = "button";
+  edit.textContent = "Edit note";
+  edit.title = "Open this map's note as text";
+  edit.addEventListener("click", () => void core.host.openNoteAsMarkdown(path));
+  toolbar.append(titleEl, hint, edit);
 
   const scroll = document.createElement("div");
   scroll.className = "lh-map-scroll";
