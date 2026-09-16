@@ -17,6 +17,7 @@ export class MemoryHost implements Host {
   commands = new Map<string, Command>();
   autoViews: { type: string; when: (path: string) => boolean }[] = [];
   fileMenu: FileMenuItem[] = [];
+  ribbon: { icon: string; title: string; run: () => void | Promise<void> }[] = [];
   openedAsMarkdown: string[] = [];
   active: string | null = null;
   /** queued answers for pickFile, prompt, confirm */
@@ -110,6 +111,10 @@ export class MemoryHost implements Host {
 
   registerFileMenu(item: FileMenuItem): void {
     this.fileMenu.push(item);
+  }
+
+  registerRibbon(icon: string, title: string, run: () => void | Promise<void>): void {
+    this.ribbon.push({ icon, title, run });
   }
 
   registerCommand(cmd: Command): void {

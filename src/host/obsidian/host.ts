@@ -12,6 +12,7 @@ import {
   Platform,
   Plugin,
   TFile,
+  TFolder,
   WorkspaceLeaf,
   normalizePath,
 } from "obsidian";
@@ -160,7 +161,9 @@ export class ObsidianHost implements Host {
   registerFileMenu(item: FileMenuItem): void {
     this.plugin.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
-        if (!(file instanceof TFile) || !item.check(file.path)) return;
+        const wantFolder = item.on === "folder";
+        if (wantFolder ? !(file instanceof TFolder) : !(file instanceof TFile)) return;
+        if (!item.check(file.path)) return;
         menu.addItem((mi) =>
           mi
             .setTitle(item.label)
@@ -169,6 +172,10 @@ export class ObsidianHost implements Host {
         );
       }),
     );
+  }
+
+  registerRibbon(icon: string, title: string, run: () => void | Promise<void>): void {
+    this.plugin.addRibbonIcon(icon, title, () => void run());
   }
 
   registerCommand(cmd: Command): void {

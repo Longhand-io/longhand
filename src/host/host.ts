@@ -41,7 +41,9 @@ export type PickKind = "note" | "image";
 export interface FileMenuItem {
   label: string;
   icon: string;
-  /** sync; the item is shown only when this returns true for the file */
+  /** "file" (default) or "folder": which kind of entry the item appears on */
+  on?: "file" | "folder";
+  /** sync; the item is shown only when this returns true for the path */
   check: (path: string) => boolean;
   run: (path: string) => void | Promise<void>;
 }
@@ -76,6 +78,8 @@ export interface Host {
   /** open a note as plain Markdown in the active pane, bypassing any auto view once */
   openNoteAsMarkdown(path: string): Promise<void>;
   registerFileMenu(item: FileMenuItem): void;
+  /** a button in the host's always-visible toolbar (Obsidian's ribbon) */
+  registerRibbon(icon: string, title: string, run: () => void | Promise<void>): void;
   registerCommand(cmd: Command): void;
   pickFile(kind: PickKind, placeholder: string): Promise<string | null>;
   prompt(title: string, initial?: string): Promise<string | null>;

@@ -57,22 +57,29 @@ export const mapModule: Module = {
       },
     });
 
-    host.registerCommand({
-      id: "map-new",
-      name: "New map",
-      run: async () => {
-        const title = await host.prompt("Map title", "");
-        if (!title) return;
-        const image = await host.pickFile("image", "Use an image, or press Escape for a blank canvas");
-        if (image && !isImagePath(image)) {
-          host.notify(`${image} is not an image Longhand can draw.`);
-          return;
-        }
-        const folder = await mapFolder(core);
-        const path = uniquePath(host.exists.bind(host), `${folder}${safeName(title)}.md`);
-        await host.writeFile(path, newMapNote(core, title, image, path));
-        await host.openView(MAP_VIEW, { path });
-      },
+    /** Ask for a title and an optional image, write the note, open it as a map. */
+    const newMap = async (folder?: string) => {
+      const title = await host.prompt("Map title", "");
+      if (!title) return;
+      const image = await host.pickFile("image", "Use an image, or press Escape for a blank canvas");
+      if (image && !isImagePath(image)) {
+        host.notify(`${image} is not an image Longhand can draw.`);
+        return;
+      }
+      const dir = folder !== undefined ? (folder === "" || folder === "/" ? "" : `${folder}/`) : await mapFolder(core);
+      const path = uniquePath(host.exists.bind(host), `${dir}${safeName(title)}.md`);
+      await host.writeFile(path, newMapNote(core, title, image, path));
+      await host.openView(MAP_VIEW, { path });
+    };
+
+    host.registerCommand({ id: "map-new", name: "New map", run: () => newMap() });
+    host.registerRibbon("map", "New map", () => newMap());
+    host.registerFileMenu({
+      label: "New map here",
+      icon: "map",
+      on: "folder",
+      check: () => true,
+      run: (folder) => newMap(folder),
     });
 
     host.registerCommand({

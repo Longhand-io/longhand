@@ -133,8 +133,11 @@ test("module registers the view and three commands; open as map only when the ac
   assert.equal(host.autoViews.length, 1);
   assert.equal(host.autoViews[0]!.when("Novel/Maps/Whitby.md"), true);
   assert.equal(host.autoViews[0]!.when("Novel/Manuscript/02 The Tin.md"), false);
-  assert.equal(host.fileMenu.length, 1);
+  assert.equal(host.fileMenu.length, 2);
   assert.equal(host.fileMenu[0]!.check("Novel/Maps/Whitby.md"), true);
+  assert.equal(host.fileMenu[1]!.on, "folder");
+  assert.equal(host.ribbon.length, 1);
+  assert.equal(host.ribbon[0]!.title, "New map");
   assert.deepEqual([...host.commands.keys()].sort(), ["map-new", "map-open", "map-set-image"]);
   host.active = "Novel/Manuscript/02 The Tin.md";
   assert.equal(host.commands.get("map-open")!.check!(), false);
@@ -154,6 +157,22 @@ test("new map command writes into the project's Maps folder and opens it", async
   await host.commands.get("map-new")!.run();
   assert.ok(host.files.has("Novel/Maps/Whitby (2).md"));
   assert.equal(host.openedViews[0]?.state.path, "Novel/Maps/Whitby (2).md");
+});
+
+test("new map from a folder's menu lands in that folder; the ribbon uses the active project's Maps folder", async () => {
+  const host = vault();
+  const core = createCore(host);
+  await mapModule.register(core);
+  host.prompts.push("Harbour");
+  host.picks.push(null);
+  await host.fileMenu[1]!.run("Novel/Research");
+  assert.ok(host.files.has("Novel/Research/Harbour.md"));
+  host.active = "Novel/Manuscript/02 The Tin.md";
+  host.prompts.push("Coast");
+  host.picks.push("Novel/Research/02 Map.png");
+  await host.ribbon[0]!.run();
+  assert.ok(host.files.has("Novel/Maps/Coast.md"));
+  assert.ok(host.files.get("Novel/Maps/Coast.md")!.includes('image: "[[02 Map.png]]"'));
 });
 
 test("helpers", () => {
