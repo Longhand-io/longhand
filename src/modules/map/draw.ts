@@ -8,7 +8,7 @@
 import type { Shape, ShapeColor, ShapeStyle, ShapeType } from "../../core/spec.js";
 import { alongLine, bounds, centroid, midpoint, simplify, type Point } from "./geometry.js";
 
-export type Tool = "select" | "circle" | "rect" | "polygon" | "line" | "text";
+export type Tool = "select" | "circle" | "rect" | "draw" | "line" | "polygon" | "text";
 
 export const VB_W = 1000;
 const SVG = "http://www.w3.org/2000/svg";
@@ -27,6 +27,8 @@ export interface DrawLayerOptions {
   onLeave(): void;
   promptText(): Promise<string | null>;
   newId(): string;
+  /** a shape was just created; the view usually switches back to Select */
+  onDone(): void;
 }
 
 export interface DrawLayer {
@@ -331,8 +333,10 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
         });
       case "polygon":
         return el("path", { d: pathOf(points, true), ...paintAttrs });
-      case "line":
+      case "draw":
         return el("path", { d: pathOf(points, false), fill: "none", ...paint(currentStyle, false, currentColor), class: "lh-draw-preview" });
+      case "line":
+        return el("path", { d: pathOf([start, p], false), fill: "none", ...paint(currentStyle, false, currentColor), class: "lh-draw-preview" });
       default:
         return null;
     }
@@ -362,10 +366,14 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
         if (pts.length < 3) return null;
         return { id, type: "polygon", points: pts.map(toFrac), ...base };
       }
-      case "line": {
+      case "draw": {
         const pts = simplify(points, SIMPLIFY_TOLERANCE);
         if (pts.length < 2) return null;
         return { id, type: "line", points: pts.map(toFrac), ...base };
+      }
+      case "line": {
+        if (Math.hypot(p[0] - start[0], p[1] - start[1]) < MIN_DRAG) return null;
+        return { id, type: "line", points: [toFrac(start), toFrac(p)], ...base };
       }
       default:
         return null;
@@ -377,6 +385,7 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
     const added = selectNew ? next[next.length - 1] : undefined;
     if (added) selectedId = added.id;
     opts.onChange(next);
+    if (added) opts.onDone();
   };
 
   function select(id: string | null) {
@@ -642,9 +651,10 @@ export const TOOLS: ToolDef[] = [
   { id: "select", label: "Select", hint: "Click a shape to select it, drag to move it", key: "v", num: "1", icon: '<path d="M5 3l7.5 17 2.2-6.8L21.5 11z"/>' },
   { id: "rect", label: "Rectangle", hint: "Drag a corner", key: "r", num: "2", icon: '<rect x="4" y="5" width="16" height="14" rx="1.5"/>' },
   { id: "circle", label: "Circle", hint: "Drag from the centre", key: "o", num: "3", icon: '<circle cx="12" cy="12" r="8"/>' },
-  { id: "polygon", label: "Region", hint: "Draw around an area; it closes itself", key: "p", num: "4", icon: '<path d="M4 20l4-1L18.5 8.5a2.1 2.1 0 0 0-3-3L5 16z"/><path d="M13 7l3 3"/>' },
-  { id: "line", label: "Line", hint: "Draw a river, road, or route", key: "l", num: "5", icon: '<path d="M5 19L19 5"/>' },
-  { id: "text", label: "Label", hint: "Click where the words go", key: "t", num: "6", icon: '<path d="M6 6h12M12 6v13M9 19h6"/>' },
+  { id: "draw", label: "Pen", hint: "Draw freely: a river, a road, a route, a coastline", key: "p", num: "4", icon: '<path d="M4 20l4-1L18.5 8.5a2.1 2.1 0 0 0-3-3L5 16z"/><path d="M13 7l3 3"/>' },
+  { id: "line", label: "Line", hint: "Drag a straight line", key: "l", num: "5", icon: '<path d="M5 19L19 5"/>' },
+  { id: "polygon", label: "Region", hint: "Draw around an area; it closes itself", key: "g", num: "6", icon: '<path d="M12 4l8 6-3 9.5H7L4 10z"/>' },
+  { id: "text", label: "Label", hint: "Click where the words go", key: "t", num: "7", icon: '<path d="M6 6h12M12 6v13M9 19h6"/>' },
 ];
 
 export const ICONS = {

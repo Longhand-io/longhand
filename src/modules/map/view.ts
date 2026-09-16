@@ -188,6 +188,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     onLeave: () => scheduleHide(),
     promptText: () => core.host.prompt("Label", ""),
     newId: () => model.newShapeId(),
+    onDone: () => setTool("select"),
   });
 
   const setTool = (tool: Tool) => {

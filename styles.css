@@ -546,24 +546,29 @@
   gap: 0.25rem;
 }
 
-.lh-map-swatch {
-  width: 1.1rem;
-  height: 1.1rem;
+/* specificity beats Obsidian's own button colours in both themes */
+.lh-root button.lh-map-swatch {
+  width: 1.15rem;
+  height: 1.15rem;
+  min-width: 0;
   padding: 0;
   border: 1px solid var(--lh-rule);
   border-radius: 50%;
-  background: var(--swatch, transparent);
+  background-color: var(--swatch, transparent);
+  background-image: none;
+  box-shadow: none;
   cursor: pointer;
 }
 
-.lh-map-swatch-none {
-  background: linear-gradient(135deg, transparent 45%, var(--lh-graphite) 45%, var(--lh-graphite) 55%, transparent 55%);
+.lh-root button.lh-map-swatch-none {
+  background-color: transparent;
+  background-image: linear-gradient(135deg, transparent 45%, var(--lh-graphite) 45%, var(--lh-graphite) 55%, transparent 55%);
 }
 
-.lh-map-swatch:hover {
+.lh-root button.lh-map-swatch:hover {
   border-color: var(--lh-ink);
 }
 
-.lh-map-swatch-active {
+.lh-root button.lh-map-swatch-active {
   box-shadow: 0 0 0 2px var(--lh-paper), 0 0 0 3.5px var(--lh-ink);
 }
