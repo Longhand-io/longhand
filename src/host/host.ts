@@ -24,6 +24,8 @@ export interface ViewHandle {
 
 export interface ViewFactory {
   icon: string;
+  /** "tab" (default) opens in the main area; "right" in the right sidebar */
+  placement?: "tab" | "right";
   title(state: ViewState): string;
   mount(el: HTMLElement, state: ViewState): ViewHandle;
 }

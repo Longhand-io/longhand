@@ -183,6 +183,20 @@ phases:
           - { id: L7.2-d1, done: true, desc: "hover or focus a pin: name and kind, aliases, attachments strip, scene search, scenes in binder order with the sentence that names the place marked; links always count, whole-word name matches when the note has match_names: true; click a scene to open it", note: "2026-09-14: src/core/appearances.ts is the engine, shared with the cast module later; src/modules/map/card.ts the card; tests/appearances.test.ts. Did not need L6 after all: appearances are computed from links and names, not from the cast panel." }
         acceptance:
           - { id: L7.2-a1, met: false, check: "in the test vault, hover the Stillwater crossing pin: two scenes listed with the mention highlighted, one image in the strip; edit a scene to add a link and the card updates without reopening the map", method: manual }
+  - id: N0
+    title: Nib panel with retrieval answers
+    program: nib
+    status: in_progress
+    depends_on: [L2]
+    note: "The open half of Nib: the panel and every answer that needs lookup rather than reading. No model, no network. Lives in this repo; the hosted half gets its own ledger."
+    subphases:
+      - id: N0.1
+        title: Panel and lookup answers
+        status: in_progress
+        deliverables:
+          - { id: N0.1-d1, done: true, desc: "right-sidebar view with transcript, suggested questions from the project, question box; answers for last seen, set at, who is in, unused places and characters, length, on the map; every answer cites and opens its scenes; off by default", note: "2026-09-16: src/modules/nib; tests/nib.test.ts covers every answer kind and the one joke" }
+        acceptance:
+          - { id: N0.1-a1, met: false, check: "in the test vault, turn Nib on, ask where Mara was last seen and where Stillwater is on the map; both answers cite the right notes and open them", method: manual }
   - id: L8
     title: Themes and templates
     program: themes-and-templates

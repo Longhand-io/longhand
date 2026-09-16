@@ -572,3 +572,178 @@
 .lh-root button.lh-map-swatch-active {
   box-shadow: 0 0 0 2px var(--lh-paper), 0 0 0 3.5px var(--lh-ink);
 }
+
+/* ---- Nib ---- */
+
+.lh-nib {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--lh-paper);
+}
+
+.lh-nib-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.8rem 1rem 0.6rem;
+  border-bottom: 1px solid var(--lh-rule);
+}
+
+.lh-nib-mark {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.55rem;
+  background: var(--lh-ink);
+  color: var(--lh-paper);
+}
+
+.lh-nib-mark svg {
+  width: 1.7rem;
+  height: 1.7rem;
+  color: var(--lh-paper);
+}
+
+.lh-nib-mark svg circle,
+.lh-nib-mark svg line {
+  stroke: var(--lh-ink);
+  fill: var(--lh-ink);
+}
+
+.lh-nib-title {
+  font-family: var(--lh-font-body);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.lh-nib-sub {
+  color: var(--lh-graphite);
+  font-size: 0.78rem;
+}
+
+.lh-nib-transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.8rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.lh-nib-you {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--lh-rule);
+  border-radius: 0.6rem 0.6rem 0.15rem 0.6rem;
+  background: var(--lh-paper-deep);
+  font-size: 0.9rem;
+}
+
+.lh-nib-answer {
+  align-self: flex-start;
+  max-width: 95%;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--lh-ink);
+  border-radius: 0.6rem 0.6rem 0.6rem 0.15rem;
+  font-family: var(--lh-font-body);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.lh-nib-answer p {
+  margin: 0 0 0.35rem;
+}
+
+.lh-nib-answer p:last-child {
+  margin-bottom: 0;
+}
+
+.lh-nib-thinking {
+  color: var(--lh-graphite);
+  border-style: dashed;
+}
+
+.lh-nib-cites {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  font-family: var(--lh-font-ui);
+}
+
+.lh-nib-cites li {
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--lh-rule);
+  cursor: pointer;
+}
+
+.lh-nib-cite-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline dotted;
+}
+
+.lh-nib-cite-detail {
+  display: block;
+  color: var(--lh-graphite);
+  font-size: 0.8rem;
+}
+
+.lh-nib-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.4rem 1rem;
+  border-top: 1px solid var(--lh-rule);
+}
+
+.lh-root button.lh-nib-chip {
+  padding: 0.2rem 0.6rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--lh-ink);
+  background: var(--lh-paper);
+  border: 1px solid var(--lh-rule);
+  border-radius: 999px;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.lh-root button.lh-nib-chip:hover {
+  border-color: var(--lh-ink);
+}
+
+.lh-nib-form {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem 0.8rem;
+}
+
+.lh-nib-form input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  color: var(--lh-ink);
+  background: var(--lh-paper);
+  border: 1px solid var(--lh-rule);
+  border-radius: var(--lh-card-radius);
+}
+
+.lh-nib-form input:focus {
+  outline: 2px solid var(--lh-ink);
+  outline-offset: 1px;
+}
+
+.lh-root .lh-nib-form button {
+  padding: 0.4rem 0.8rem;
+  font: inherit;
+  color: var(--lh-paper);
+  background: var(--lh-ink);
+  border: 1px solid var(--lh-ink);
+  border-radius: var(--lh-card-radius);
+  box-shadow: none;
+  cursor: pointer;
+}

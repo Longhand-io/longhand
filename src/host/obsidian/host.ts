@@ -172,12 +172,14 @@ export class ObsidianHost implements Host {
       .getLeavesOfType(type)
       .find((l) => (l.view as HostView).currentPath() === state.path);
     if (existing) {
-      this.app.workspace.revealLeaf(existing);
+      await this.app.workspace.revealLeaf(existing);
       return;
     }
-    const leaf = this.app.workspace.getLeaf("tab");
+    const right = this.factories.get(type)?.placement === "right";
+    const leaf = right ? this.app.workspace.getRightLeaf(false) : this.app.workspace.getLeaf("tab");
+    if (!leaf) return;
     await leaf.setViewState({ type, state: { path: state.path }, active: true });
-    this.app.workspace.revealLeaf(leaf);
+    await this.app.workspace.revealLeaf(leaf);
   }
 
   registerAutoView(type: string, when: (path: string) => boolean): void {
