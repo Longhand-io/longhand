@@ -10,8 +10,9 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import type { Pin } from "../../core/spec.js";
+import { SHAPE_STYLES, type Pin, type Shape, type ShapeStyle } from "../../core/spec.js";
 import { createPlaceCard, type PlaceCard } from "./card.js";
+import { createDrawLayer, STYLE_LABELS, TOOLS, type Tool } from "./draw.js";
 import { MapModel, type ResolvedMap } from "./model.js";
 
 const DRAG_THRESHOLD = 4; // px before a press becomes a drag
@@ -42,16 +43,155 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   edit.addEventListener("click", () => void core.host.openNoteAsMarkdown(path));
   toolbar.append(titleEl, hint, edit);
 
+  // ---- tools row ----
+  const tools = document.createElement("div");
+  tools.className = "lh-map-tools";
+  const toolButtons = new Map<Tool, HTMLButtonElement>();
+  for (const t of TOOLS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "lh-map-tool";
+    b.textContent = t.label;
+    b.title = t.hint;
+    b.addEventListener("click", () => setTool(t.id));
+    toolButtons.set(t.id, b);
+    tools.appendChild(b);
+  }
+  const styleSelect = document.createElement("select");
+  styleSelect.className = "lh-map-style";
+  styleSelect.title = "Style for new shapes";
+  for (const s of SHAPE_STYLES) {
+    const o = document.createElement("option");
+    o.value = s;
+    o.textContent = STYLE_LABELS[s];
+    styleSelect.appendChild(o);
+  }
+  styleSelect.addEventListener("change", () => layer.setStyle(styleSelect.value as ShapeStyle));
+  const undoBtn = document.createElement("button");
+  undoBtn.type = "button";
+  undoBtn.className = "lh-map-tool";
+  undoBtn.textContent = "Undo";
+  undoBtn.title = "Undo the last drawing change (Cmd or Ctrl+Z)";
+  undoBtn.disabled = true;
+  undoBtn.addEventListener("click", () => void undo());
+  tools.append(styleSelect, undoBtn);
+
+  // ---- properties row, shown for the selected shape ----
+  const props = document.createElement("div");
+  props.className = "lh-map-props";
+  props.hidden = true;
+  const propLabel = document.createElement("input");
+  propLabel.type = "text";
+  propLabel.placeholder = "Label";
+  propLabel.className = "lh-map-prop-label";
+  const propStyle = styleSelect.cloneNode(true) as HTMLSelectElement;
+  propStyle.title = "Style";
+  const propLink = document.createElement("button");
+  propLink.type = "button";
+  propLink.className = "lh-map-tool";
+  const propUnlink = document.createElement("button");
+  propUnlink.type = "button";
+  propUnlink.className = "lh-map-tool";
+  propUnlink.textContent = "Unlink";
+  const propDelete = document.createElement("button");
+  propDelete.type = "button";
+  propDelete.className = "lh-map-tool lh-map-tool-danger";
+  propDelete.textContent = "Delete";
+  props.append(propLabel, propStyle, propLink, propUnlink, propDelete);
+
   const scroll = document.createElement("div");
   scroll.className = "lh-map-scroll";
   const stage = document.createElement("div");
   stage.className = "lh-map-stage";
   scroll.appendChild(stage);
-  root.append(toolbar, scroll);
+  root.append(toolbar, tools, props, scroll);
 
   let current: ResolvedMap | null = null;
   let writing = false;
   let disposed = false;
+  let aspect = 16 / 10;
+  const undoStack: Shape[][] = [];
+
+  const commitShapes = async (next: Shape[]) => {
+    if (current) undoStack.push(current.shapes);
+    if (undoStack.length > 50) undoStack.shift();
+    undoBtn.disabled = false;
+    await write(() => model.setShapes(next));
+  };
+
+  const undo = async () => {
+    const prev = undoStack.pop();
+    undoBtn.disabled = undoStack.length === 0;
+    if (!prev) return;
+    await write(() => model.setShapes(prev));
+  };
+
+  const layer = createDrawLayer(stage, {
+    onSelect: (shape) => showProps(shape),
+    onChange: (next) => void commitShapes(next),
+    onHover: (shape, anchor) => {
+      const target = model.targetOfShape(shape);
+      if (target) showCard(anchor as HTMLElement, target, shape.label ?? target);
+    },
+    onLeave: () => scheduleHide(),
+    promptText: () => core.host.prompt("Label", ""),
+    newId: () => model.newShapeId(),
+  });
+
+  const setTool = (tool: Tool) => {
+    layer.setTool(tool);
+    for (const [id, b] of toolButtons) b.classList.toggle("lh-map-tool-active", id === tool);
+    hint.textContent = TOOLS.find((t) => t.id === tool)?.hint ?? "";
+  };
+
+  const showProps = (shape: Shape | null) => {
+    props.hidden = !shape;
+    if (!shape) return;
+    propLabel.value = shape.label ?? "";
+    propStyle.value = shape.style ?? "outline";
+    propStyle.disabled = shape.type === "text";
+    const target = model.targetOfShape(shape);
+    propLink.textContent = shape.to ? `Linked: ${shape.to}` : "Link to note…";
+    propLink.classList.toggle("lh-map-pin-unresolved", !!shape.to && !target);
+    propUnlink.hidden = !shape.to;
+  };
+
+  const selectedPatch = async (patch: { [K in keyof Shape]?: Shape[K] | undefined }) => {
+    const s = layer.selected();
+    if (!s || !current) return;
+    await commitShapes(current.shapes.map((x) => (x.id === s.id ? cleanShape({ ...x, ...patch } as Shape) : x)));
+  };
+  propLabel.addEventListener("change", () => void selectedPatch({ label: propLabel.value.trim() }));
+  propLabel.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") propLabel.blur();
+  });
+  propStyle.addEventListener("change", () => void selectedPatch({ style: propStyle.value as ShapeStyle }));
+  propLink.addEventListener("click", async () => {
+    const target = await core.host.pickFile("note", "Link this shape to which note?");
+    if (!target) return;
+    await selectedPatch({ to: core.host.linkTo(target, path) });
+  });
+  propUnlink.addEventListener("click", () => void selectedPatch({ to: undefined }));
+  propDelete.addEventListener("click", async () => {
+    const s = layer.selected();
+    if (!s || !current) return;
+    await commitShapes(current.shapes.filter((x) => x.id !== s.id));
+  });
+
+  root.tabIndex = -1;
+  root.addEventListener("keydown", (ev) => {
+    const inField = (ev.target as HTMLElement).matches("input, select, textarea");
+    if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "z" && !inField) {
+      ev.preventDefault();
+      void undo();
+    } else if ((ev.key === "Delete" || ev.key === "Backspace") && !inField && layer.selected()) {
+      ev.preventDefault();
+      propDelete.click();
+    } else if (ev.key === "Escape" && !inField) {
+      if (layer.tool() !== "select") setTool("select");
+      else layer.select(null);
+    }
+  });
 
   // ---- place cards ----
   const cards = new Map<string, PlaceCard>();
@@ -70,14 +210,16 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     return card;
   };
 
-  const placeCard = (pinEl: HTMLElement, cardEl: HTMLElement) => {
+  const placeCard = (anchor: HTMLElement, cardEl: HTMLElement) => {
     const sw = stage.clientWidth;
     const sh = stage.clientHeight;
-    const px = pinEl.offsetLeft;
-    const py = pinEl.offsetTop;
+    const sr = stage.getBoundingClientRect();
+    const ar = anchor.getBoundingClientRect();
+    const px = ar.left + ar.width / 2 - sr.left;
+    const py = ar.top + ar.height / 2 - sr.top;
     const w = cardEl.offsetWidth || 304;
     const h = cardEl.offsetHeight || 240;
-    const half = (pinEl.offsetWidth || 0) / 2 + CARD_GAP;
+    const half = ar.width / 2 + CARD_GAP;
     let left = px + half;
     let top = py - h / 2;
     if (left + w > sw - 8) left = px - half - w;
@@ -88,12 +230,10 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     cardEl.style.top = `${top}px`;
   };
 
-  const showCard = (pinEl: HTMLElement, pin: Pin) => {
+  const showCard = (pinEl: HTMLElement, target: string, label: string) => {
     cancelHide();
-    const target = model.targetOf(pin);
-    if (!target) return;
     if (openCard && openCard.pinEl !== pinEl) hideCard();
-    const card = cardFor(target, model.labelOf(pin));
+    const card = cardFor(target, label);
     openCard = { pinEl, card };
     pinEl.classList.add("lh-map-pin-open");
     card.el.hidden = false;
@@ -134,8 +274,10 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     titleEl.textContent = note.title ?? path;
     hideCard();
     for (const c of cards.values()) c.el.remove();
+    layer.svg.remove();
     stage.replaceChildren();
     stage.classList.toggle("lh-map-blank", !note.imagePath);
+    aspect = note.aspect ?? aspect;
 
     if (note.imagePath) {
       const img = document.createElement("img");
@@ -146,6 +288,8 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
       img.addEventListener("load", () => {
         if (img.naturalWidth > 0 && img.naturalHeight > 0) {
           stage.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+          aspect = img.naturalWidth / img.naturalHeight;
+          if (current) layer.setShapes(current.shapes, aspect);
         }
       });
       stage.appendChild(img);
@@ -160,6 +304,8 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
       }
     }
 
+    stage.appendChild(layer.svg);
+    layer.setShapes(note.shapes, aspect);
     note.pins.forEach((pin, index) => stage.appendChild(pinElement(pin, index)));
     for (const c of cards.values()) stage.appendChild(c.el);
   };
@@ -215,7 +361,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
       } else if (core.host.isMobile || ev.pointerType === "touch") {
         // no hover on touch: a tap shows the card, whose name opens the note
         if (openCard?.pinEl === pinEl) hideCard();
-        else showCard(pinEl, pin);
+        else hover();
       } else {
         await open(pin);
       }
@@ -227,9 +373,13 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
       pinEl.classList.remove("lh-map-pin-dragging");
       void render();
     });
-    pinEl.addEventListener("mouseenter", () => showCard(pinEl, pin));
+    const hover = () => {
+      const t = model.targetOf(pin);
+      if (t) showCard(pinEl, t, model.labelOf(pin));
+    };
+    pinEl.addEventListener("mouseenter", hover);
     pinEl.addEventListener("mouseleave", scheduleHide);
-    pinEl.addEventListener("focus", () => showCard(pinEl, pin));
+    pinEl.addEventListener("focus", hover);
     pinEl.addEventListener("blur", scheduleHide);
     pinEl.addEventListener("contextmenu", (ev) => {
       ev.preventDefault();
@@ -306,11 +456,15 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   };
 
   stage.addEventListener("dblclick", (ev) => {
-    if ((ev.target as HTMLElement).closest(".lh-map-pin, .lh-map-card")) return;
+    if (layer.tool() !== "select") return;
+    if ((ev.target as HTMLElement).closest(".lh-map-pin, .lh-map-card, .lh-shape")) return;
     void add(ev.clientX, ev.clientY);
   });
   stage.addEventListener("pointerdown", (ev) => {
-    if (!(ev.target as HTMLElement).closest(".lh-map-pin, .lh-map-card")) hideCard();
+    if (!(ev.target as HTMLElement).closest(".lh-map-pin, .lh-map-card, .lh-shape")) {
+      hideCard();
+      if (layer.tool() === "select") layer.select(null);
+    }
   });
 
   // long press on touch adds a pin
@@ -337,6 +491,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     invalidateCards();
   });
 
+  setTool("select");
   void render();
 
   return {
@@ -344,7 +499,23 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
       disposed = true;
       cancelHide();
       unsubscribe();
+      layer.destroy();
       root.remove();
     },
   };
+}
+
+function cleanShape(s: Shape): Shape {
+  const out: Shape = { id: s.id, type: s.type };
+  if (s.x !== undefined) out.x = s.x;
+  if (s.y !== undefined) out.y = s.y;
+  if (s.r !== undefined) out.r = s.r;
+  if (s.w !== undefined) out.w = s.w;
+  if (s.h !== undefined) out.h = s.h;
+  if (s.points) out.points = s.points;
+  if (s.style) out.style = s.style;
+  if (s.label) out.label = s.label;
+  if (s.to) out.to = s.to;
+  if (s.tags && s.tags.length) out.tags = s.tags;
+  return out;
 }

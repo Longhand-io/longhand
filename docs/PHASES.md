@@ -153,6 +153,13 @@ phases:
         acceptance:
           - { id: L7.1-a1, met: false, check: "in Obsidian, open a map note as a map, drag a pin, add one, remove one; git diff of the note shows only the pins block changing; the image never moves", method: manual }
           - { id: L7.1-a2, met: false, check: "a map note with an Inkarnate PNG export at 2k and the same map at 8k show pins in the same places", method: manual }
+      - id: L7.3
+        title: Drawing layer
+        status: in_progress
+        deliverables:
+          - { id: L7.3-d1, done: true, desc: "SVG drawing layer over the map, own code: circle, rect, freehand region and line simplified to a few points, text label; styles wood, water, hills, road, river, route, outline in the site's cartography palette; select, move, resize, relabel, restyle, link to a note, delete, undo; shapes stored as a shapes list on the note", note: "2026-09-15: src/modules/map/draw.ts and geometry.ts; model and parsing tested in tests/shapes.test.ts; the SVG interaction is untested" }
+        acceptance:
+          - { id: L7.3-a1, met: false, check: "draw a wood region around the fixture's forest, link it to a setting note, hover it and see the place card; the note's shapes block is the only change", method: manual }
       - id: L7.2
         title: Place cards
         status: in_progress

@@ -28,6 +28,30 @@ export interface Pin {
   label?: string;
 }
 
+export type ShapeType = "circle" | "rect" | "polygon" | "line" | "text";
+export type ShapeStyle = "outline" | "wood" | "water" | "hills" | "road" | "river" | "route";
+export const SHAPE_STYLES: ShapeStyle[] = ["outline", "wood", "water", "hills", "road", "river", "route"];
+
+/** A drawn shape on a map. Coordinates are fractions of the drawn width and height, like pins. */
+export interface Shape {
+  id: string;
+  type: ShapeType;
+  /** circle, rect, text: the centre */
+  x?: number;
+  y?: number;
+  /** circle: radius as a fraction of the width */
+  r?: number;
+  /** rect: size */
+  w?: number;
+  h?: number;
+  /** polygon, line: the points */
+  points?: [number, number][];
+  style?: ShapeStyle;
+  label?: string;
+  to?: string;
+  tags?: string[];
+}
+
 export interface MapNote extends Document {
   /** the raw `image` link text, or null for a blank canvas */
   image: string | null;
@@ -35,6 +59,7 @@ export interface MapNote extends Document {
   height: number | null;
   relief: string | null;
   pins: Pin[];
+  shapes: Shape[];
 }
 
 export class Spec {
@@ -78,6 +103,14 @@ export class Spec {
         pins.push(pin);
       }
     }
+    const rawShapes = fm.get(doc.fields, "shapes");
+    const shapes: Shape[] = [];
+    if (Array.isArray(rawShapes)) {
+      for (const s of rawShapes) {
+        const shape = shapeFromValue(s);
+        if (shape) shapes.push(shape);
+      }
+    }
     return {
       ...doc,
       image: str(fm.get(doc.fields, "image")),
@@ -85,7 +118,12 @@ export class Spec {
       height: num(fm.get(doc.fields, "height")),
       relief: str(fm.get(doc.fields, "relief")),
       pins,
+      shapes,
     };
+  }
+
+  async setShapes(path: string, shapes: Shape[]): Promise<boolean> {
+    return this.setField(path, "shapes", shapes.map(shapeToValue));
   }
 
   /** Write one field and save. Returns false when nothing changed. */
@@ -119,6 +157,68 @@ export class Spec {
     for (const [k, v] of Object.entries(fields)) fm.set(f, k, v);
     return fm.serialize(f);
   }
+}
+
+function shapeFromValue(v: Value): Shape | null {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+  const id = str(v["id"]);
+  const type = str(v["type"]);
+  if (!id || !type || !["circle", "rect", "polygon", "line", "text"].includes(type)) return null;
+  const s: Shape = { id, type: type as ShapeType };
+  const x = num(v["x"]);
+  const y = num(v["y"]);
+  const r = num(v["r"]);
+  const w = num(v["w"]);
+  const h = num(v["h"]);
+  if (x !== null) s.x = clamp01(x);
+  if (y !== null) s.y = clamp01(y);
+  if (r !== null) s.r = Math.max(0, r);
+  if (w !== null) s.w = Math.max(0, w);
+  if (h !== null) s.h = Math.max(0, h);
+  const pts = str(v["points"]);
+  if (pts !== null) s.points = parsePoints(pts);
+  const style = str(v["style"]);
+  if (style !== null && (SHAPE_STYLES as string[]).includes(style)) s.style = style as ShapeStyle;
+  const label = str(v["label"]);
+  if (label !== null) s.label = label;
+  const to = str(v["to"]);
+  if (to !== null) s.to = to;
+  const tags = v["tags"];
+  if (Array.isArray(tags)) s.tags = tags.filter((t): t is string => typeof t === "string");
+  if ((s.type === "polygon" || s.type === "line") && (!s.points || s.points.length < 2)) return null;
+  if ((s.type === "circle" || s.type === "rect" || s.type === "text") && (s.x === undefined || s.y === undefined)) return null;
+  return s;
+}
+
+function shapeToValue(s: Shape): { [k: string]: Value } {
+  const o: { [k: string]: Value } = { id: s.id, type: s.type };
+  if (s.x !== undefined) o["x"] = round(s.x);
+  if (s.y !== undefined) o["y"] = round(s.y);
+  if (s.r !== undefined) o["r"] = round(s.r);
+  if (s.w !== undefined) o["w"] = round(s.w);
+  if (s.h !== undefined) o["h"] = round(s.h);
+  if (s.points) o["points"] = formatPoints(s.points);
+  if (s.style) o["style"] = s.style;
+  if (s.label !== undefined && s.label !== "") o["label"] = s.label;
+  if (s.to) o["to"] = s.to;
+  if (s.tags && s.tags.length) o["tags"] = s.tags;
+  return o;
+}
+
+/** "0.12,0.44 0.2,0.5" to pairs; the SVG points format, so it stays readable in YAML. */
+export function parsePoints(text: string): [number, number][] {
+  const out: [number, number][] = [];
+  for (const pair of text.trim().split(/\s+/)) {
+    const [a, b] = pair.split(",");
+    const x = Number(a);
+    const y = Number(b);
+    if (Number.isFinite(x) && Number.isFinite(y)) out.push([clamp01(x), clamp01(y)]);
+  }
+  return out;
+}
+
+export function formatPoints(points: [number, number][]): string {
+  return points.map(([x, y]) => `${round(x)},${round(y)}`).join(" ");
 }
 
 function str(v: Value | undefined): string | null {

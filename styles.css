@@ -349,3 +349,151 @@
   background: var(--lh-ink);
   color: var(--lh-paper);
 }
+
+/* ---- drawing layer ---- */
+
+.lh-map-tools,
+.lh-map-props {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 1rem;
+  border-bottom: 1px solid var(--lh-rule);
+  background: var(--lh-paper);
+}
+
+.lh-map-props {
+  background: var(--lh-paper-deep);
+}
+
+.lh-map-props[hidden] {
+  display: none;
+}
+
+.lh-map-tool,
+.lh-map-style,
+.lh-map-prop-label {
+  padding: 0.2rem 0.6rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--lh-ink);
+  background: var(--lh-paper);
+  border: 1px solid var(--lh-rule);
+  border-radius: var(--lh-card-radius);
+  cursor: pointer;
+}
+
+.lh-map-prop-label {
+  cursor: text;
+  min-width: 12rem;
+}
+
+.lh-map-tool:hover,
+.lh-map-style:hover {
+  border-color: var(--lh-ink);
+}
+
+.lh-map-tool-active {
+  background: var(--lh-ink);
+  color: var(--lh-paper);
+  border-color: var(--lh-ink);
+}
+
+.lh-map-tool:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.lh-map-tool-danger:hover {
+  border-color: var(--lh-removed);
+  color: var(--lh-removed);
+}
+
+.lh-draw {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  font-family: var(--lh-font-body);
+}
+
+.lh-draw-active {
+  pointer-events: all;
+  cursor: crosshair;
+}
+
+.lh-map-drawing .lh-map-pin {
+  pointer-events: none;
+}
+
+.lh-shape {
+  pointer-events: visiblePainted;
+  cursor: pointer;
+}
+
+.lh-draw-active .lh-shape {
+  pointer-events: none;
+}
+
+.lh-shape path,
+.lh-shape circle,
+.lh-shape rect {
+  vector-effect: non-scaling-stroke;
+}
+
+.lh-shape:hover path:not(.lh-hit),
+.lh-shape:hover circle,
+.lh-shape:hover rect {
+  filter: brightness(0.92);
+}
+
+.lh-shape-label {
+  fill: var(--lh-graphite);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--lh-paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.lh-shape-text {
+  fill: var(--lh-ink);
+  font-style: italic;
+  pointer-events: all;
+}
+
+.lh-shape-linked .lh-shape-label {
+  fill: var(--lh-ink);
+  text-decoration: underline dotted;
+}
+
+.lh-draw-preview {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.lh-draw-selection {
+  fill: none;
+  stroke: var(--lh-ink);
+  stroke-width: 1px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.lh-draw-handle {
+  fill: var(--lh-paper);
+  stroke: var(--lh-ink);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: all;
+  cursor: nwse-resize;
+}
+
+.theme-dark .lh-shape-label {
+  stroke: var(--lh-paper);
+}

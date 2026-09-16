@@ -117,6 +117,38 @@ pins:
 
 A pin's `to` is a wikilink to any note; `label` is optional and defaults to the note's name. `x` and `y` are clamped to the range 0 to 1 by readers. Nothing is stored on the target, so deleting a map deletes only its pins, and a pin whose note has gone is kept and shown as unresolved rather than dropped.
 
+### Shapes
+
+A map may also carry `shapes`, drawn on top of the picture in the same fractional coordinates. A shape is a region, a line, or a label, with an optional `style` that says how a reader draws it, and the same `label`, `to`, and `tags` a pin can carry, so a region around a wood can be the wood's note and get the same place card. Readers keep shapes they do not understand and never rewrite a shape they did not change.
+
+```yaml
+shapes:
+  - id: s-k2m9qa                 # stable within the note
+    type: polygon                # circle | rect | polygon | line | text
+    points: "0.2,0.5 0.3,0.45 0.35,0.6 0.22,0.62"   # polygon, line: SVG points syntax
+    style: wood                  # outline | wood | water | hills | road | river | route
+    label: Harrow Wood
+    to: "[[Harrow Wood]]"
+  - id: s-7fh3xd
+    type: circle
+    x: 0.6                       # circle, rect, text: the centre
+    y: 0.7
+    r: 0.02                      # circle: radius as a fraction of the width
+  - id: s-p0q1zz
+    type: rect
+    x: 0.4
+    y: 0.3
+    w: 0.1                       # rect: size as fractions
+    h: 0.06
+  - id: s-lbl001
+    type: text
+    x: 0.5
+    y: 0.12
+    label: The Grey Reach
+```
+
+Styles are advice, not data: a reader without a style draws every shape as an outline. `points` uses SVG's syntax so the field stays one readable line.
+
 A blank canvas:
 
 ```yaml

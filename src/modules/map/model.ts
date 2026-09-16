@@ -5,7 +5,7 @@
 // the tests call this. Every change is one frontmatter write of `pins` and nothing else.
 
 import type { Core } from "../../core/modules.js";
-import { clamp01, type MapNote, type Pin } from "../../core/spec.js";
+import { clamp01, type MapNote, type Pin, type Shape } from "../../core/spec.js";
 import { baseName, parseWikilink } from "../../core/wikilink.js";
 
 export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "avif"];
@@ -81,9 +81,60 @@ export class MapModel {
     await this.core.spec.setPins(this.path, note.pins);
   }
 
+  // ---- shapes ----
+
+  async setShapes(shapes: Shape[]): Promise<void> {
+    await this.core.spec.setShapes(this.path, shapes);
+  }
+
+  /** Merge `patch` into one shape; a key set to undefined removes that field. */
+  async updateShape(id: string, patch: { [K in keyof Shape]?: Shape[K] | undefined }): Promise<void> {
+    const note = await this.core.spec.readMap(this.path);
+    const next = note.shapes.map((s) => (s.id === id ? clean({ ...s, ...patch } as Shape) : s));
+    await this.core.spec.setShapes(this.path, next);
+  }
+
+  async removeShape(id: string): Promise<void> {
+    const note = await this.core.spec.readMap(this.path);
+    await this.core.spec.setShapes(this.path, note.shapes.filter((s) => s.id !== id));
+  }
+
+  async linkShape(id: string, targetPath: string | null): Promise<void> {
+    const to = targetPath ? this.core.host.linkTo(targetPath, this.path) : undefined;
+    await this.updateShape(id, { to });
+  }
+
+  targetOfShape(shape: Shape): string | null {
+    if (!shape.to) return null;
+    const link = parseWikilink(shape.to);
+    return this.core.host.resolveLink(link ? link.target : shape.to, this.path);
+  }
+
+  newShapeId(): string {
+    let s = "";
+    for (let i = 0; i < 6; i++) s += "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)];
+    return `s-${s}`;
+  }
+
   async setImage(imagePath: string | null): Promise<void> {
     await this.core.spec.setField(this.path, "image", imagePath ? this.core.host.linkTo(imagePath, this.path) : undefined);
   }
+}
+
+/** Drop undefined and empty optional fields so they are not written. */
+function clean(s: Shape): Shape {
+  const out: Shape = { id: s.id, type: s.type };
+  if (s.x !== undefined) out.x = s.x;
+  if (s.y !== undefined) out.y = s.y;
+  if (s.r !== undefined) out.r = s.r;
+  if (s.w !== undefined) out.w = s.w;
+  if (s.h !== undefined) out.h = s.h;
+  if (s.points) out.points = s.points;
+  if (s.style) out.style = s.style;
+  if (s.label) out.label = s.label;
+  if (s.to) out.to = s.to;
+  if (s.tags && s.tags.length) out.tags = s.tags;
+  return out;
 }
 
 /** Text for a new map note. Blank canvas unless an image is given. */
