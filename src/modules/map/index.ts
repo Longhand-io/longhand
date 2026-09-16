@@ -6,7 +6,8 @@
 
 import type { Core, Module } from "../../core/modules.js";
 import { PROJECT_NOTE } from "../../core/projects.js";
-import { isImagePath, newMapNote, safeName } from "./model.js";
+import { safeName, uniquePath } from "../../core/naming.js";
+import { isImagePath, newMapNote } from "./model.js";
 import { mountMapView } from "./view.js";
 
 export const MAP_VIEW = "longhand-map";
@@ -110,14 +111,3 @@ async function mapFolder(core: Core): Promise<string> {
   return "Maps/";
 }
 
-function uniquePath(exists: (p: string) => boolean, path: string): string {
-  if (!exists(path)) return path;
-  const dot = path.lastIndexOf(".");
-  const stem = path.slice(0, dot);
-  const ext = path.slice(dot);
-  for (let n = 2; n < 1000; n++) {
-    const candidate = `${stem} (${n})${ext}`;
-    if (!exists(candidate)) return candidate;
-  }
-  return path;
-}

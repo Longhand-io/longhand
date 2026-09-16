@@ -8,9 +8,10 @@ import { Plugin } from "obsidian";
 import { createCore, ModuleLoader, type ModuleSettings } from "./core/modules.js";
 import { ObsidianHost } from "./host/obsidian/host.js";
 import { LonghandSettingTab } from "./host/obsidian/settings.js";
+import { binderModule } from "./modules/binder/index.js";
 import { mapModule } from "./modules/map/index.js";
 
-const MODULES = [mapModule];
+const MODULES = [binderModule, mapModule];
 
 export default class LonghandPlugin extends Plugin {
   private moduleSettings: ModuleSettings = { enabled: {} };

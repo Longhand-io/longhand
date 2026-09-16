@@ -7,6 +7,7 @@
 import type { Core } from "../../core/modules.js";
 import { clamp01, type MapNote, type Pin, type Shape } from "../../core/spec.js";
 import { baseName, parseWikilink } from "../../core/wikilink.js";
+import { newId } from "../../core/naming.js";
 
 export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "avif"];
 export const DEFAULT_CANVAS = { width: 1600, height: 1000 };
@@ -159,21 +160,4 @@ export function isImagePath(path: string): boolean {
   return dot >= 0 && IMAGE_EXTENSIONS.includes(path.slice(dot + 1).toLowerCase());
 }
 
-/** A safe file name from a title, with the spec's character rules. */
-export function safeName(title: string): string {
-  const cleaned = title
-    .replace(/[/\\:*?"<>|#^[\]]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
-  return (cleaned || "Untitled").slice(0, 120);
-}
-
-function newId(): string {
-  const c = globalThis.crypto;
-  if (c && typeof c.randomUUID === "function") return c.randomUUID().toUpperCase();
-  // fallback for hosts without WebCrypto: still a v4-shaped id
-  const hex = "0123456789ABCDEF";
-  let s = "";
-  for (let i = 0; i < 32; i++) s += hex[Math.floor(Math.random() * 16)];
-  return `${s.slice(0, 8)}-${s.slice(8, 12)}-4${s.slice(13, 16)}-${s.slice(16, 20)}-${s.slice(20, 32)}`;
-}
+export { safeName } from "../../core/naming.js";

@@ -182,6 +182,11 @@
 
 /* ---- modals ---- */
 
+.lh-choice-detail {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .lh-prompt-input {
   width: 100%;
   margin-bottom: 0.75rem;

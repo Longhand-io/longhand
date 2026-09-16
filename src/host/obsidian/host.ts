@@ -18,7 +18,7 @@ import {
 } from "obsidian";
 import type { App } from "obsidian";
 import { IMAGE_EXTENSIONS } from "../../modules/map/model.js";
-import type { Command, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
+import type { Choice, Command, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
 
 export class ObsidianHost implements Host {
   readonly isMobile: boolean = Platform.isMobile;
@@ -83,6 +83,11 @@ export class ObsidianHost implements Host {
 
   exists(path: string): boolean {
     return this.app.vault.getAbstractFileByPath(normalizePath(path)) !== null;
+  }
+
+  async createFolder(path: string): Promise<void> {
+    const norm = normalizePath(path);
+    if (!this.app.vault.getAbstractFileByPath(norm)) await this.app.vault.createFolder(norm);
   }
 
   listFiles(): string[] {
@@ -200,6 +205,10 @@ export class ObsidianHost implements Host {
     });
   }
 
+  choose<T>(title: string, options: Choice<T>[]): Promise<T | null> {
+    return new Promise((resolve) => new ChoicePicker(this.app, title, options, resolve).open());
+  }
+
   prompt(title: string, initial = ""): Promise<string | null> {
     return new Promise((resolve) => new PromptModal(this.app, title, initial, resolve).open());
   }
@@ -295,6 +304,46 @@ class FilePicker extends FuzzySuggestModal<TFile> {
   onChooseItem(item: TFile): void {
     this.settled = true;
     this.resolve(item.path);
+  }
+
+  override onClose(): void {
+    super.onClose();
+    if (!this.settled) {
+      this.settled = true;
+      this.resolve(null);
+    }
+  }
+}
+
+class ChoicePicker<T> extends FuzzySuggestModal<Choice<T>> {
+  private settled = false;
+
+  constructor(
+    app: App,
+    title: string,
+    private readonly options: Choice<T>[],
+    private readonly resolve: (value: T | null) => void,
+  ) {
+    super(app);
+    this.setPlaceholder(title);
+  }
+
+  getItems(): Choice<T>[] {
+    return this.options;
+  }
+
+  getItemText(item: Choice<T>): string {
+    return item.detail ? `${item.label}  ${item.detail}` : item.label;
+  }
+
+  override renderSuggestion(item: { item: Choice<T> }, el: HTMLElement): void {
+    el.createDiv({ text: item.item.label });
+    if (item.item.detail) el.createDiv({ text: item.item.detail, cls: "lh-choice-detail" });
+  }
+
+  onChooseItem(item: Choice<T>): void {
+    this.settled = true;
+    this.resolve(item.value);
   }
 
   override onClose(): void {

@@ -5,7 +5,7 @@
 
 import { parse, get } from "../core/frontmatter.js";
 import { linkTarget } from "../core/wikilink.js";
-import type { Command, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewState } from "./host.js";
+import type { Choice, Command, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewState } from "./host.js";
 
 export class MemoryHost implements Host {
   readonly isMobile = false;
@@ -20,8 +20,10 @@ export class MemoryHost implements Host {
   ribbon: { icon: string; title: string; run: () => void | Promise<void> }[] = [];
   openedAsMarkdown: string[] = [];
   active: string | null = null;
-  /** queued answers for pickFile, prompt, confirm */
+  folders: string[] = [];
+  /** queued answers for pickFile, prompt, confirm, choose */
   picks: (string | null)[] = [];
+  choices: unknown[] = [];
   prompts: (string | null)[] = [];
   confirms: boolean[] = [];
   private listeners = new Set<(c: FileChange) => void>();
@@ -43,7 +45,11 @@ export class MemoryHost implements Host {
   }
 
   exists(path: string): boolean {
-    return this.files.has(path);
+    return this.files.has(path) || this.folders.includes(path) || [...this.files.keys()].some((p) => p.startsWith(path + "/"));
+  }
+
+  async createFolder(path: string): Promise<void> {
+    this.folders.push(path);
   }
 
   listFiles(): string[] {
@@ -123,6 +129,12 @@ export class MemoryHost implements Host {
 
   async pickFile(_kind: PickKind, _placeholder: string): Promise<string | null> {
     return this.picks.shift() ?? null;
+  }
+
+  async choose<T>(_title: string, options: Choice<T>[]): Promise<T | null> {
+    const want = this.choices.shift();
+    if (want === undefined) return options[0]?.value ?? null;
+    return options.find((o) => o.value === want)?.value ?? null;
   }
 
   async prompt(_title: string, initial?: string): Promise<string | null> {

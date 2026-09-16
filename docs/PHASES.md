@@ -126,9 +126,17 @@ phases:
 
   - id: L4
     title: Binder and Inspector
-    status: planned
-    depends_on: [L3]
-    subphases: []
+    status: in_progress
+    depends_on: [L2]
+    note: "L4.1 pulled ahead of L3 on 2026-09-15 because creating notes of each kind is needed to test every other module. The tree and inspector still follow Snapshots."
+    subphases:
+      - id: L4.1
+        title: New note with a type picker
+        status: in_progress
+        deliverables:
+          - { id: L4.1-d1, done: true, desc: "New… command, ribbon button, and folder menu entry: scene, folder, character, setting, event, map; placement rules per kind; next numeric prefix at the siblings' width; id, type, title, created written; the note opens", note: "2026-09-15: src/modules/binder/index.ts, src/core/naming.ts; tests/binder.test.ts" }
+        acceptance:
+          - { id: L4.1-a1, met: false, check: "in an imported project, New scene from a chapter creates the next-numbered file beside it and opens it; New character lands beside the other characters", method: manual }
   - id: L5
     title: Corkboard, threads, story-date axis
     status: planned

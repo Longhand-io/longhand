@@ -38,6 +38,12 @@ export interface Command {
 
 export type PickKind = "note" | "image";
 
+export interface Choice<T> {
+  label: string;
+  detail?: string;
+  value: T;
+}
+
 export interface FileMenuItem {
   label: string;
   icon: string;
@@ -55,6 +61,7 @@ export interface Host {
   readFile(path: string): Promise<string>;
   writeFile(path: string, text: string): Promise<void>;
   exists(path: string): boolean;
+  createFolder(path: string): Promise<void>;
   listFiles(): string[];
   onFileChanged(cb: (change: FileChange) => void): () => void;
   /** frontmatter as the host has it cached, for sync checks; null when unknown */
@@ -82,6 +89,8 @@ export interface Host {
   registerRibbon(icon: string, title: string, run: () => void | Promise<void>): void;
   registerCommand(cmd: Command): void;
   pickFile(kind: PickKind, placeholder: string): Promise<string | null>;
+  /** a short list to choose from; null when dismissed */
+  choose<T>(title: string, options: Choice<T>[]): Promise<T | null>;
   prompt(title: string, initial?: string): Promise<string | null>;
   confirm(message: string, action: string): Promise<boolean>;
   notify(message: string): void;
