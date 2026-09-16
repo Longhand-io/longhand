@@ -7,7 +7,7 @@ import { createCore } from "../src/core/modules.js";
 import { MemoryHost } from "../src/host/memory.js";
 import { ask, findNote, resetJoke, words } from "../src/modules/nib/answers.js";
 import { nibModule } from "../src/modules/nib/index.js";
-import { suggest } from "../src/modules/nib/view.js";
+import { askInSidebar, clearHistory, suggest } from "../src/modules/nib/view.js";
 
 function vault(): MemoryHost {
   return new MemoryHost({
@@ -105,6 +105,14 @@ test("module is off by default and registers a right-hand view and the Ask Nib c
   assert.equal(host.companions.length, 1);
   await nibModule.unregister?.();
   assert.equal(host.companions.length, 0);
+});
+
+test("a question from the corner opens the sidebar with the context, carrying what Nib said", async () => {
+  clearHistory();
+  const host = vault();
+  const core = createCore(host);
+  await askInSidebar(core, "Which places have no scene?", "Novel/Maps/Harrowmere.md", "Harrow Wood is on this map but no scene is set there yet.");
+  assert.deepEqual(host.openedViews, [{ type: "longhand-nib", state: { path: "Novel/Maps/Harrowmere.md" } }]);
 });
 
 test("suggestions follow the context: a map asks about its places, a scene about itself", async () => {

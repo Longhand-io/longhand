@@ -12,21 +12,31 @@ import { nudgesFor, type Nudge } from "./nudges.js";
 export const NIB_VIEW_TYPE = "longhand-nib";
 
 /** Open sidebar chats, so the corner nib can hand a question to one that already exists. */
-const live = new Set<{ submit: (q: string) => Promise<void> }>();
-/** A question waiting for the sidebar to mount. */
-let pending: string | null = null;
+const live = new Set<{ submit: (q: string) => Promise<void>; say: (text: string) => void }>();
+/** A question waiting for the sidebar to mount, with what Nib said in the corner just before. */
+let pending: { question: string; preface: string | null } | null = null;
 /** Nudges already spoken this session, by key. Said once, then never again. */
 const spoken = new Set<string>();
+/** The conversation so far this session. The sidebar re-renders it whenever it mounts. */
+type Turn = { you: string; answer: Answer } | { nib: string };
+const history: Turn[] = [];
 
-/** Put a question to Nib in the sidebar, opening it if needed. */
-export async function askInSidebar(core: Core, question: string, contextPath = ""): Promise<void> {
+/** Put a question to Nib in the sidebar, opening it if needed. `preface` is what Nib just said in the corner. */
+export async function askInSidebar(core: Core, question: string, contextPath = "", preface: string | null = null): Promise<void> {
   const view = [...live][0];
   if (view) {
+    if (preface) view.say(preface);
+    await core.host.openView(NIB_VIEW_TYPE, { path: contextPath });
     await view.submit(question);
     return;
   }
-  pending = question;
+  pending = { question, preface };
   await core.host.openView(NIB_VIEW_TYPE, { path: contextPath });
+}
+
+/** Test hook. */
+export function clearHistory(): void {
+  history.length = 0;
 }
 
 const NIB_MARK =
@@ -70,21 +80,36 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   form.append(input, send);
   root.append(head, transcript, chipsToggle, chips, form);
 
-  let asked = 0;
-  const submit = async (question: string) => {
-    const q = question.trim();
-    if (!q) return;
-    input.value = "";
-    asked++;
-    if (asked === 1) {
-      // the answers need the room; the chips step aside after the first question
-      chips.hidden = true;
-      chipsToggle.hidden = false;
-    }
+  const stepAside = () => {
+    // the answers need the room; the chips step aside once there is a conversation
+    chips.hidden = true;
+    chipsToggle.hidden = false;
+  };
+
+  const youLine = (q: string) => {
     const you = document.createElement("div");
     you.className = "lh-nib-you";
     you.textContent = q;
     transcript.appendChild(you);
+  };
+
+  const say = (text: string) => {
+    history.push({ nib: text });
+    const card = document.createElement("div");
+    card.className = "lh-nib-answer";
+    const p = document.createElement("p");
+    p.textContent = text;
+    card.appendChild(p);
+    transcript.appendChild(card);
+    transcript.scrollTop = transcript.scrollHeight;
+  };
+
+  const submit = async (question: string) => {
+    const q = question.trim();
+    if (!q) return;
+    input.value = "";
+    stepAside();
+    youLine(q);
     const card = document.createElement("div");
     card.className = "lh-nib-answer lh-nib-thinking";
     card.textContent = "Looking…";
@@ -97,6 +122,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
       console.error("[longhand] nib", err);
       answer = { kind: "help", text: "Something in the files would not read. The console has the detail.", cites: [] };
     }
+    history.push({ you: q, answer });
     card.classList.remove("lh-nib-thinking");
     renderAnswer(card, answer);
     transcript.scrollTop = transcript.scrollHeight;
@@ -137,8 +163,29 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
     }
   };
 
+  const replay = () => {
+    for (const turn of history) {
+      if ("nib" in turn) {
+        const card = document.createElement("div");
+        card.className = "lh-nib-answer";
+        const p = document.createElement("p");
+        p.textContent = turn.nib;
+        card.appendChild(p);
+        transcript.appendChild(card);
+      } else {
+        youLine(turn.you);
+        const card = document.createElement("div");
+        card.className = "lh-nib-answer";
+        renderAnswer(card, turn.answer);
+        transcript.appendChild(card);
+      }
+    }
+    if (history.length) stepAside();
+    transcript.scrollTop = transcript.scrollHeight;
+  };
+
   const greet = async () => {
-    if (!contextPath) return;
+    if (history.length || !contextPath) return;
     const doc = await core.projects.byPath(contextPath);
     if (!doc) return;
     const card = document.createElement("div");
@@ -172,15 +219,17 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   });
 
   const unsubscribe = core.host.onFileChanged(() => void renderChips());
-  const handle = { submit };
+  const handle = { submit, say };
   live.add(handle);
+  replay();
   void greet()
     .then(renderChips)
     .then(() => {
       if (pending) {
-        const q = pending;
+        const p = pending;
         pending = null;
-        return submit(q);
+        if (p.preface) say(p.preface);
+        return submit(p.question);
       }
       return undefined;
     });
@@ -348,11 +397,12 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
   };
 
   const handOff = async (question: string) => {
+    const preface = current ? current.text : null;
     if (current) spoken.add(current.key);
     current = null;
     hide();
     renderBubble();
-    await askInSidebar(core, question, contextPath);
+    await askInSidebar(core, question, contextPath, preface);
   };
 
   button.addEventListener("click", () => {

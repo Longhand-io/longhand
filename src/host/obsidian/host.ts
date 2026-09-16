@@ -169,14 +169,14 @@ export class ObsidianHost implements Host {
   }
 
   async openView(type: string, state: ViewState): Promise<void> {
-    const existing = this.app.workspace
-      .getLeavesOfType(type)
-      .find((l) => (l.view as HostView).currentPath() === state.path);
+    const right = this.factories.get(type)?.placement === "right";
+    const leaves = this.app.workspace.getLeavesOfType(type);
+    // a sidebar view is one per workspace: reveal it as it is rather than remounting with a new path
+    const existing = right ? leaves[0] : leaves.find((l) => (l.view as HostView).currentPath() === state.path);
     if (existing) {
       await this.app.workspace.revealLeaf(existing);
       return;
     }
-    const right = this.factories.get(type)?.placement === "right";
     const leaf = right ? this.app.workspace.getRightLeaf(false) : this.app.workspace.getLeaf("tab");
     if (!leaf) return;
     await leaf.setViewState({ type, state: { path: state.path }, active: true });
