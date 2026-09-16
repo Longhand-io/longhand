@@ -195,6 +195,7 @@ phases:
         status: in_progress
         deliverables:
           - { id: N0.1-d1, done: true, desc: "right-sidebar view with transcript, suggested questions from the project, question box; answers for last seen, set at, who is in, unused places and characters, length, on the map; every answer cites and opens its scenes; off by default", note: "2026-09-16: src/modules/nib; tests/nib.test.ts covers every answer kind and the one joke" }
+          - { id: N0.1-d2, done: true, desc: "the character: a corner nib on every Longhand view that idles, badges when it has noticed something, speaks it once in a bubble with a follow-up and a question box, and hands the conversation to the sidebar; nudges computed from the files for the view on screen", note: "2026-09-16: src/modules/nib/nudges.ts, tests/nudges.test.ts; modelled on what worked in the Office Assistant and not on what did not: strong signals only, said once, dismissible, never covering the work" }
         acceptance:
           - { id: N0.1-a1, met: false, check: "in the test vault, turn Nib on, ask where Mara was last seen and where Stillwater is on the map; both answers cite the right notes and open them", method: manual }
   - id: L8

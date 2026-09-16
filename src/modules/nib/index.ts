@@ -5,9 +5,9 @@
 // model; it talks to nothing outside the vault. The hosted Nib plugs in behind the same panel.
 
 import type { Core, Module } from "../../core/modules.js";
-import { mountNibDock, mountNibView } from "./view.js";
+import { mountNibDock, mountNibView, NIB_VIEW_TYPE } from "./view.js";
 
-export const NIB_VIEW = "longhand-nib";
+export const NIB_VIEW = NIB_VIEW_TYPE;
 
 let registeredHost: Core["host"] | null = null;
 
@@ -24,7 +24,7 @@ export const nibModule: Module = {
       icon: "pen-tool",
       placement: "right",
       title: () => "Nib",
-      mount: (el) => mountNibView(core, el),
+      mount: (el, state) => mountNibView(core, el, state.path),
     });
     host.registerCommand({ id: "nib-ask", name: "Ask Nib", run: () => host.openView(NIB_VIEW, { path: "" }) });
     host.registerRibbon("pen-tool", "Ask Nib", () => host.openView(NIB_VIEW, { path: "" }));

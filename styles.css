@@ -796,24 +796,129 @@
   box-shadow: 0 6px 18px rgba(30, 36, 50, 0.35);
 }
 
-.lh-nib-pop {
-  width: 22rem;
+.lh-nib-bubble {
+  position: relative;
+  width: 19rem;
   max-width: calc(100vw - 3rem);
-  height: 26rem;
-  max-height: 70vh;
-  border: 1px solid var(--lh-rule);
-  border-radius: 0.6rem;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(30, 36, 50, 0.25);
+  padding: 0.7rem 0.8rem 0.6rem;
+  border: 1px solid var(--lh-ink);
+  border-radius: 0.6rem 0.6rem 0.15rem 0.6rem;
   background: var(--lh-paper);
+  color: var(--lh-ink);
+  box-shadow: 0 8px 24px rgba(30, 36, 50, 0.2);
+  font-family: var(--lh-font-body);
+  font-size: 0.92rem;
+  line-height: 1.4;
 }
 
-.lh-nib-pop[hidden] {
+.lh-nib-bubble::after {
+  content: "";
+  position: absolute;
+  right: 0.9rem;
+  bottom: -0.45rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: var(--lh-paper);
+  border-right: 1px solid var(--lh-ink);
+  border-bottom: 1px solid var(--lh-ink);
+  transform: rotate(45deg);
+}
+
+.lh-nib-bubble[hidden] {
   display: none;
 }
 
-.lh-nib-pop .lh-nib {
-  height: 100%;
+.lh-nib-bubble-text {
+  margin: 0 0 0.4rem;
+}
+
+.lh-nib-bubble .lh-nib-cites {
+  margin: 0 0 0.4rem;
+}
+
+.lh-nib-bubble .lh-nib-cites li {
+  cursor: pointer;
+}
+
+.lh-nib-bubble-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.lh-nib-bubble-actions:empty {
+  display: none;
+}
+
+.lh-nib-bubble-form {
+  padding: 0;
+}
+
+.lh-nib-badge {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--lh-color-yellow);
+  border: 2px solid var(--lh-paper);
+}
+
+.lh-nib-badge[hidden] {
+  display: none;
+}
+
+/* the character idles: the ink dot blinks now and then; with something to say it nods */
+@keyframes lh-nib-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.15); }
+}
+
+@keyframes lh-nib-nod {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-9deg); }
+  45% { transform: rotate(6deg); }
+  70% { transform: rotate(-3deg); }
+}
+
+.lh-nib-idle svg circle {
+  transform-origin: 39px 44px;
+  animation: lh-nib-blink 6s ease-in-out infinite;
+}
+
+.lh-nib-alert svg {
+  transform-origin: 50% 80%;
+  animation: lh-nib-nod 2.4s ease-in-out infinite;
+}
+
+.lh-root .lh-nib-chips-toggle {
+  align-self: flex-start;
+  margin: 0.3rem 1rem 0;
+  padding: 0.1rem 0.5rem;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--lh-graphite);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.lh-nib-chips[hidden] {
+  display: none;
+}
+
+.lh-nib-chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.lh-root button.lh-nib-chip {
+  white-space: nowrap;
 }
 
 .lh-map {

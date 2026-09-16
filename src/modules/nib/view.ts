@@ -7,6 +7,27 @@
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import { ask, type Answer } from "./answers.js";
+import { nudgesFor, type Nudge } from "./nudges.js";
+
+export const NIB_VIEW_TYPE = "longhand-nib";
+
+/** Open sidebar chats, so the corner nib can hand a question to one that already exists. */
+const live = new Set<{ submit: (q: string) => Promise<void> }>();
+/** A question waiting for the sidebar to mount. */
+let pending: string | null = null;
+/** Nudges already spoken this session, by key. Said once, then never again. */
+const spoken = new Set<string>();
+
+/** Put a question to Nib in the sidebar, opening it if needed. */
+export async function askInSidebar(core: Core, question: string, contextPath = ""): Promise<void> {
+  const view = [...live][0];
+  if (view) {
+    await view.submit(question);
+    return;
+  }
+  pending = question;
+  await core.host.openView(NIB_VIEW_TYPE, { path: contextPath });
+}
 
 const NIB_MARK =
   '<svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="28,10 50,10 50,60 39,76 28,60" fill="currentColor"/><circle cx="39" cy="44" r="3.5" fill="var(--lh-paper)"/><line x1="39" y1="47" x2="39" y2="62" stroke="var(--lh-paper)" stroke-width="3"/><path d="M28 86 H 86" stroke="currentColor" stroke-width="9" stroke-linecap="round"/></svg>';
@@ -28,6 +49,14 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
 
   const chips = document.createElement("div");
   chips.className = "lh-nib-chips";
+  const chipsToggle = document.createElement("button");
+  chipsToggle.type = "button";
+  chipsToggle.className = "lh-nib-chips-toggle";
+  chipsToggle.textContent = "Suggestions";
+  chipsToggle.hidden = true;
+  chipsToggle.addEventListener("click", () => {
+    chips.hidden = !chips.hidden;
+  });
 
   const form = document.createElement("form");
   form.className = "lh-nib-form";
@@ -39,12 +68,19 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   send.type = "submit";
   send.textContent = "Ask";
   form.append(input, send);
-  root.append(head, transcript, chips, form);
+  root.append(head, transcript, chipsToggle, chips, form);
 
+  let asked = 0;
   const submit = async (question: string) => {
     const q = question.trim();
     if (!q) return;
     input.value = "";
+    asked++;
+    if (asked === 1) {
+      // the answers need the room; the chips step aside after the first question
+      chips.hidden = true;
+      chipsToggle.hidden = false;
+    }
     const you = document.createElement("div");
     you.className = "lh-nib-you";
     you.textContent = q;
@@ -136,11 +172,23 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   });
 
   const unsubscribe = core.host.onFileChanged(() => void renderChips());
-  void greet().then(renderChips);
+  const handle = { submit };
+  live.add(handle);
+  void greet()
+    .then(renderChips)
+    .then(() => {
+      if (pending) {
+        const q = pending;
+        pending = null;
+        return submit(q);
+      }
+      return undefined;
+    });
   input.focus();
 
   return {
     destroy() {
+      live.delete(handle);
       unsubscribe();
       root.remove();
     },
@@ -182,41 +230,166 @@ export async function suggest(core: Core, contextPath = ""): Promise<string[]> {
   return [...new Set(out)].slice(0, 6);
 }
 
-/** The corner companion: a nib in the bottom-right of a Longhand view that opens Nib right there. */
+/**
+ * The character in the corner. It idles, and when it has noticed something true about the
+ * view on screen it shows a badge and, on hover or click, a speech bubble with the observation,
+ * a follow-up, and a question box. Asking hands the conversation to the sidebar; the nib stays.
+ */
 export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): ViewHandle {
   const dock = document.createElement("div");
   dock.className = "lh-root lh-nib-dock";
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "lh-nib-dock-button";
-  button.title = "Ask Nib";
-  button.setAttribute("aria-label", "Ask Nib");
+  button.className = "lh-nib-dock-button lh-nib-idle";
+  button.title = "Nib";
+  button.setAttribute("aria-label", "Nib");
   button.innerHTML = NIB_MARK;
-  const pop = document.createElement("div");
-  pop.className = "lh-nib-pop";
-  pop.hidden = true;
-  dock.append(pop, button);
+  const badge = document.createElement("span");
+  badge.className = "lh-nib-badge";
+  badge.hidden = true;
+  button.appendChild(badge);
+
+  const bubble = document.createElement("div");
+  bubble.className = "lh-nib-bubble";
+  bubble.hidden = true;
+  const bubbleText = document.createElement("p");
+  bubbleText.className = "lh-nib-bubble-text";
+  const bubbleCites = document.createElement("ul");
+  bubbleCites.className = "lh-nib-cites";
+  const actions = document.createElement("div");
+  actions.className = "lh-nib-bubble-actions";
+  const askBtn = document.createElement("button");
+  askBtn.type = "button";
+  askBtn.className = "lh-nib-chip";
+  const dismissBtn = document.createElement("button");
+  dismissBtn.type = "button";
+  dismissBtn.className = "lh-nib-chip";
+  dismissBtn.textContent = "Not now";
+  actions.append(askBtn, dismissBtn);
+  const form = document.createElement("form");
+  form.className = "lh-nib-form lh-nib-bubble-form";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Ask Nib";
+  input.setAttribute("aria-label", "Ask Nib");
+  const send = document.createElement("button");
+  send.type = "submit";
+  send.textContent = "Ask";
+  form.append(input, send);
+  bubble.append(bubbleText, bubbleCites, actions, form);
+  dock.append(bubble, button);
   el.appendChild(dock);
-  let inner: ViewHandle | null = null;
-  const toggle = () => {
-    if (pop.hidden) {
-      pop.hidden = false;
-      button.classList.add("lh-nib-dock-open");
-      if (!inner) inner = mountNibView(core, pop, contextPath);
-      else pop.querySelector<HTMLInputElement>("input")?.focus();
+
+  let current: Nudge | null = null;
+  let greeting = "";
+  let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const show = () => {
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = null;
+    bubble.hidden = false;
+    button.classList.remove("lh-nib-idle", "lh-nib-alert");
+  };
+  const hide = () => {
+    bubble.hidden = true;
+    button.classList.add("lh-nib-idle");
+    if (current) button.classList.add("lh-nib-alert");
+  };
+  const scheduleHide = () => {
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      if (document.activeElement !== input) hide();
+    }, 400);
+  };
+
+  const renderBubble = () => {
+    bubbleCites.replaceChildren();
+    if (current) {
+      bubbleText.textContent = current.text;
+      for (const c of current.cites.slice(0, 3)) {
+        const li = document.createElement("li");
+        const label = document.createElement("span");
+        label.className = "lh-nib-cite-label";
+        label.textContent = `Open ${c.label}`;
+        li.appendChild(label);
+        if (c.detail) {
+          const d = document.createElement("span");
+          d.className = "lh-nib-cite-detail";
+          d.textContent = c.detail;
+          li.appendChild(d);
+        }
+        li.addEventListener("click", () => void core.host.openNote(c.path));
+        bubbleCites.appendChild(li);
+      }
+      askBtn.hidden = !current.ask;
+      askBtn.textContent = current.ask ?? "";
+      dismissBtn.hidden = false;
     } else {
-      pop.hidden = true;
-      button.classList.remove("lh-nib-dock-open");
+      bubbleText.textContent = greeting;
+      askBtn.hidden = true;
+      dismissBtn.hidden = true;
     }
+    badge.hidden = !current;
+    button.classList.toggle("lh-nib-alert", !!current && bubble.hidden);
   };
-  button.addEventListener("click", toggle);
-  const onKey = (ev: KeyboardEvent) => {
-    if (ev.key === "Escape" && !pop.hidden) toggle();
+
+  const look = async () => {
+    const doc = await core.projects.byPath(contextPath);
+    const title = doc?.title ?? contextPath;
+    greeting = doc?.type === "map" ? `You are on ${title}. Ask me what is set at a place, or who has been where.` : `You are in ${title}. Ask me who is in it, or where someone was last seen.`;
+    let nudges: Nudge[] = [];
+    try {
+      nudges = await nudgesFor(core, contextPath);
+    } catch (err) {
+      console.error("[longhand] nib nudges", err);
+    }
+    current = nudges.find((n) => !spoken.has(n.key)) ?? null;
+    renderBubble();
   };
-  dock.addEventListener("keydown", onKey);
+
+  const handOff = async (question: string) => {
+    if (current) spoken.add(current.key);
+    current = null;
+    hide();
+    renderBubble();
+    await askInSidebar(core, question, contextPath);
+  };
+
+  button.addEventListener("click", () => {
+    if (bubble.hidden) {
+      show();
+      input.focus();
+    } else hide();
+  });
+  button.addEventListener("mouseenter", show);
+  button.addEventListener("mouseleave", scheduleHide);
+  bubble.addEventListener("mouseenter", show);
+  bubble.addEventListener("mouseleave", scheduleHide);
+  askBtn.addEventListener("click", () => void handOff(current?.ask ?? ""));
+  dismissBtn.addEventListener("click", () => {
+    if (current) spoken.add(current.key);
+    current = null;
+    hide();
+    renderBubble();
+  });
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = "";
+    void handOff(q);
+  });
+  dock.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && !bubble.hidden) hide();
+  });
+
+  const unsubscribe = core.host.onFileChanged(() => void look());
+  void look();
+
   return {
     destroy() {
-      inner?.destroy();
+      unsubscribe();
+      if (hideTimer) clearTimeout(hideTimer);
       dock.remove();
     },
   };
