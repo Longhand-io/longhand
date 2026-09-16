@@ -2,12 +2,13 @@
 repo: longhand
 schema: phases/v1
 current_phase: L1
-updated: 2026-09-14
+updated: 2026-09-16
 updated_by: grassclaw
 
 phases:
   - id: L0
     title: Design, spec, brand, site
+    program: spec-and-importer
     status: done
     completed: 2026-09-12
     depends_on: []
@@ -36,6 +37,7 @@ phases:
 
   - id: L1
     title: Importer v0.1
+    program: spec-and-importer
     status: in_progress
     depends_on: []
     note: "Delivered in the scrivener-to-obsidian repo; see its docs/PHASES.md (phases I0 to I8). Listed here because v0.1 of Longhand is not shippable without it."
@@ -50,6 +52,7 @@ phases:
 
   - id: L2
     title: Plugin core
+    program: studio-core
     status: in_progress
     depends_on: []
     subphases:
@@ -92,6 +95,7 @@ phases:
 
   - id: L3
     title: Snapshots module
+    program: manuscript
     status: planned
     depends_on: [L2]
     subphases:
@@ -126,6 +130,7 @@ phases:
 
   - id: L4
     title: Binder and Inspector
+    program: manuscript
     status: in_progress
     depends_on: [L2]
     note: "L4.1 pulled ahead of L3 on 2026-09-15 because creating notes of each kind is needed to test every other module. The tree and inspector still follow Snapshots."
@@ -139,16 +144,19 @@ phases:
           - { id: L4.1-a1, met: false, check: "in an imported project, New scene from a chapter creates the next-numbered file beside it and opens it; New character lands beside the other characters", method: manual }
   - id: L5
     title: Corkboard, threads, story-date axis
+    program: manuscript
     status: planned
     depends_on: [L4]
     subphases: []
   - id: L6
     title: Research and Cast
+    program: research-and-cast
     status: planned
     depends_on: [L4]
     subphases: []
   - id: L7
     title: Map, flat, with place cards
+    program: cartography
     status: in_progress
     depends_on: [L2]
     note: "Pulled ahead of L3 to L6 on 2026-09-14 as the first module to build on the core, because it is the most demo-able surface and exercises the same frontmatter writer every other module needs. The flat map needs only L2; place cards (L7.2) still need the cast module."
@@ -177,11 +185,13 @@ phases:
           - { id: L7.2-a1, met: false, check: "in the test vault, hover the Stillwater crossing pin: two scenes listed with the mention highlighted, one image in the strip; edit a scene to add a link and the card updates without reopening the map", method: manual }
   - id: L8
     title: Themes and templates
+    program: themes-and-templates
     status: planned
     depends_on: [L4]
     subphases: []
   - id: L9
     title: v1.0, spec frozen, community plugin listing
+    program: studio-core
     status: planned
     depends_on: [L5, L6, L7, L8]
     subphases: []
@@ -193,5 +203,6 @@ The YAML above is the ledger; this page is only its frame. Rules:
 
 - A deliverable is `done` when it is merged on `main`. An acceptance is `met` when the named check was run and passed, by the named method (`unit`, `integration`, `e2e`, `manual`, `review`).
 - `current_phase` is the lowest phase with any open deliverable.
+- `program` names the product line in `docs/programs.md` the phase belongs to.
 - Later phases get their subphases written when the phase before them is `in_progress`, not before. An empty `subphases` list means not yet planned in detail, on purpose.
 - Every PR that closes a deliverable flips it here in the same PR, under the PR body's Ledger heading.
