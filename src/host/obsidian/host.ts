@@ -18,13 +18,14 @@ import {
 } from "obsidian";
 import type { App } from "obsidian";
 import { IMAGE_EXTENSIONS } from "../../modules/map/model.js";
-import type { Choice, Command, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
+import type { Choice, Command, Companion, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
 
 export class ObsidianHost implements Host {
   readonly isMobile: boolean = Platform.isMobile;
   private readonly app: App;
   private listeners = new Set<(c: FileChange) => void>();
   private factories = new Map<string, ViewFactory>();
+  readonly companions: Companion[] = [];
   private autoViews: { type: string; when: (path: string) => boolean }[] = [];
   /** paths to open as plain Markdown once, skipping the auto view */
   private bypass = new Set<string>();
@@ -164,7 +165,7 @@ export class ObsidianHost implements Host {
 
   registerView(type: string, factory: ViewFactory): void {
     this.factories.set(type, factory);
-    this.plugin.registerView(type, (leaf) => new HostView(leaf, type, factory));
+    this.plugin.registerView(type, (leaf) => new HostView(leaf, type, factory, this));
   }
 
   async openView(type: string, state: ViewState): Promise<void> {
@@ -184,6 +185,15 @@ export class ObsidianHost implements Host {
 
   registerAutoView(type: string, when: (path: string) => boolean): void {
     this.autoViews.push({ type, when });
+  }
+
+  registerCompanion(companion: Companion): void {
+    this.companions.push(companion); // open views pick it up on their next mount
+  }
+
+  unregisterCompanion(id: string): void {
+    const i = this.companions.findIndex((c) => c.id === id);
+    if (i >= 0) this.companions.splice(i, 1);
   }
 
   async openNoteAsMarkdown(path: string): Promise<void> {
@@ -255,11 +265,13 @@ export class ObsidianHost implements Host {
 class HostView extends ItemView {
   private state: ViewState = { path: "" };
   private handle: ViewHandle | null = null;
+  private companionHandles: ViewHandle[] = [];
 
   constructor(
     leaf: WorkspaceLeaf,
     private readonly type: string,
     private readonly factory: ViewFactory,
+    private readonly host: ObsidianHost,
   ) {
     super(leaf);
   }
@@ -296,17 +308,25 @@ class HostView extends ItemView {
   }
 
   override async onClose(): Promise<void> {
+    this.unmount();
+  }
+
+  private unmount(): void {
     this.handle?.destroy();
     this.handle = null;
+    for (const h of this.companionHandles) h.destroy();
+    this.companionHandles = [];
   }
 
   private mount(): void {
-    this.handle?.destroy();
-    this.handle = null;
+    this.unmount();
     const container = this.contentEl;
     container.empty();
-    if (!this.state.path) return;
     this.handle = this.factory.mount(container, this.state);
+    // companions such as Nib's corner button ride along on views that have a file; not on Nib itself
+    if (this.state.path && this.factory.placement !== "right") {
+      for (const c of this.host.companions) this.companionHandles.push(c.mount(container, this.state));
+    }
   }
 }
 

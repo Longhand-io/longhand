@@ -30,6 +30,12 @@ export interface ViewFactory {
   mount(el: HTMLElement, state: ViewState): ViewHandle;
 }
 
+/** UI a module adds to every Longhand view, such as Nib's corner button. The host mounts it. */
+export interface Companion {
+  id: string;
+  mount(el: HTMLElement, state: ViewState): ViewHandle;
+}
+
 export interface Command {
   id: string;
   name: string;
@@ -84,6 +90,8 @@ export interface Host {
   openView(type: string, state: ViewState): Promise<void>;
   /** when a note that satisfies `when` opens as plain Markdown, replace it with this view */
   registerAutoView(type: string, when: (path: string) => boolean): void;
+  registerCompanion(companion: Companion): void;
+  unregisterCompanion(id: string): void;
   /** open a note as plain Markdown in the active pane, bypassing any auto view once */
   openNoteAsMarkdown(path: string): Promise<void>;
   registerFileMenu(item: FileMenuItem): void;

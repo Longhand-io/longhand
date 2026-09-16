@@ -28,7 +28,13 @@ export const mapModule: Module = {
         const t = fm?.["title"];
         return typeof t === "string" && t !== "" ? t : state.path.replace(/\.md$/i, "");
       },
-      mount: (el, state) => mountMapView(core, el, state.path),
+      mount: (el, state) => {
+        if (!state.path) {
+          el.textContent = "Open a map note first.";
+          return { destroy() {} };
+        }
+        return mountMapView(core, el, state.path);
+      },
     });
 
     const isMap = (path: string): boolean => host.cachedFrontmatter(path)?.["type"] === "map";

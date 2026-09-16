@@ -5,9 +5,11 @@
 // model; it talks to nothing outside the vault. The hosted Nib plugs in behind the same panel.
 
 import type { Core, Module } from "../../core/modules.js";
-import { mountNibView } from "./view.js";
+import { mountNibDock, mountNibView } from "./view.js";
 
 export const NIB_VIEW = "longhand-nib";
+
+let registeredHost: Core["host"] | null = null;
 
 export const nibModule: Module = {
   id: "nib",
@@ -17,6 +19,7 @@ export const nibModule: Module = {
 
   register(core: Core) {
     const host = core.host;
+    registeredHost = host;
     host.registerView(NIB_VIEW, {
       icon: "pen-tool",
       placement: "right",
@@ -25,5 +28,12 @@ export const nibModule: Module = {
     });
     host.registerCommand({ id: "nib-ask", name: "Ask Nib", run: () => host.openView(NIB_VIEW, { path: "" }) });
     host.registerRibbon("pen-tool", "Ask Nib", () => host.openView(NIB_VIEW, { path: "" }));
+    // the corner nib on every Longhand view, the way a studio assistant sits in the margin
+    host.registerCompanion({ id: "nib", mount: (el, state) => mountNibDock(core, el, state.path) });
+  },
+
+  unregister() {
+    // the host keeps the view and command registered; the corner nib goes away
+    registeredHost?.unregisterCompanion("nib");
   },
 };

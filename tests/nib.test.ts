@@ -7,6 +7,7 @@ import { createCore } from "../src/core/modules.js";
 import { MemoryHost } from "../src/host/memory.js";
 import { ask, findNote, resetJoke, words } from "../src/modules/nib/answers.js";
 import { nibModule } from "../src/modules/nib/index.js";
+import { suggest } from "../src/modules/nib/view.js";
 
 function vault(): MemoryHost {
   return new MemoryHost({
@@ -101,4 +102,16 @@ test("module is off by default and registers a right-hand view and the Ask Nib c
   await nibModule.register(core);
   assert.equal(host.views.get("longhand-nib")?.placement, "right");
   assert.ok(host.commands.has("nib-ask"));
+  assert.equal(host.companions.length, 1);
+  await nibModule.unregister?.();
+  assert.equal(host.companions.length, 0);
+});
+
+test("suggestions follow the context: a map asks about its places, a scene about itself", async () => {
+  const core = createCore(vault());
+  const onMap = await suggest(core, "Novel/Maps/Harrowmere.md");
+  assert.equal(onMap[0], "What is set at Stillwater?");
+  assert.ok(onMap.includes("Which places have no scene?"));
+  const inScene = await suggest(core, "Novel/Manuscript/01 Part One/02 The Tin.md");
+  assert.deepEqual(inScene.slice(0, 2), ["Who is in The Tin?", "How long is The Tin?"]);
 });

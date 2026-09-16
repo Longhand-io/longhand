@@ -17,7 +17,7 @@ Not yet cut. Scope: plugin core and the Snapshots module; see `ROADMAP.md`.
 - Fixed: a map note opened as text the first time and only became a map after switching tabs. Notes already open when the plugin loads are swapped too.
 - A map note opens as a map when you click it; the view's Edit note button opens the text instead. Right-click a note in the file explorer for Open as map.
 
-- Nib, the panel: off by default, no network. A margin view with suggested questions and a question box that answers from the files: where someone was last seen, what is set at a place, who is in a scene, which places or characters have no scene, how long a scene, folder, or the manuscript is, and where a note is on a map. Every answer cites the scenes it used and opens them. The hosted Nib will plug in behind the same panel.
+- Nib, the panel: off by default, no network. A margin view with suggested questions and a question box that answers from the files: where someone was last seen, what is set at a place, who is in a scene, which places or characters have no scene, how long a scene, folder, or the manuscript is, and where a note is on a map. Every answer cites the scenes it used and opens them. Nib also sits as a small nib in the corner of every Longhand view and opens a popover there, with suggestions that fit what is on screen. The hosted Nib will plug in behind the same panel.
 
 ### Spec
 
