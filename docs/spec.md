@@ -47,6 +47,7 @@ bookmarks: ["[[Sample Recipe]]"]           # Scrivener document bookmarks as wik
 date: 1897-04-12                           # story date; any note with a date appears on the timeline (optional)
 date_end: 1897-04-13                       # story date range end (optional)
 attachments: ["[[Research/03 Source.pdf]]"] # research items attached to this document (optional)
+places: ["[[Stillwater]]"]                # settings this scene is set at, when the prose does not link them (optional)
 meta:                                      # Scrivener custom metadata, keyed by field title
   Source: Grandma
 ---
@@ -87,6 +88,8 @@ label: Red                                  # the thread this character carries 
 ```
 
 Appearances are never stored. A character appears in a scene when the scene links to the character's note, or, if the note carries `match_names: true`, when the scene's text contains the title or an alias as a whole word, case-insensitively. Readers compute appearances from the manuscript in order; the cast panel is a view, not a record, so it can never be out of date.
+
+A scene can also declare where it is set with `places`, a list of links to setting notes. That counts as an appearance without touching the prose, which is how an assistant attaches a scene to a place: one line of frontmatter the writer can see and remove.
 
 The same rule gives a place its scenes. A map pin whose `to` is a setting note can show every chapter and scene set there, the sentence that names it, and the setting's `attachments` (images and notes pinned for inspiration), all computed at view time. Nothing on the map duplicates anything in the manuscript.
 

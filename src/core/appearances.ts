@@ -73,22 +73,46 @@ export async function readSubject(core: Core, path: string): Promise<Subject> {
 
 /** Every document in the subject's project that mentions it, in binder order. */
 export async function appearances(core: Core, subject: Subject): Promise<Appearance[]> {
+  return scan(core, subject, subject.matchNames ? "as-configured" : "links-only");
+}
+
+/**
+ * Documents that name the subject but do not count yet: name matches while matching is off,
+ * with no link and no `places` entry. What an audit offers to attach.
+ */
+export async function candidates(core: Core, subject: Subject): Promise<Appearance[]> {
+  const counted = new Set((await appearances(core, subject)).map((a) => a.doc.path));
+  const byName = await scan(core, subject, "names-always");
+  return byName.filter((a) => !counted.has(a.doc.path));
+}
+
+type Mode = "links-only" | "as-configured" | "names-always";
+
+async function scan(core: Core, subject: Subject, mode: Mode): Promise<Appearance[]> {
   const project = await core.projects.projectOf(subject.path);
   const root = project ? project.root : "";
   const docs = await core.projects.documents(root);
-  const names = subject.matchNames ? [subject.title, ...subject.aliases].filter((n) => n.trim() !== "") : [];
+  const useNames = mode === "names-always" || (mode === "as-configured" && subject.matchNames);
+  const names = useNames ? [subject.title, ...subject.aliases].filter((n) => n.trim() !== "") : [];
   const nameRe = names.length ? wholeWord(names) : null;
   const out: Appearance[] = [];
   for (const doc of docs) {
     if (doc.path === subject.path) continue;
     if (doc.type && !(doc.type === "text" || doc.type === "folder")) continue;
     const text = await core.host.readFile(doc.path);
-    const { plain, links } = flatten(fm.parse(text).body, doc.path, core, subject.path);
+    const body = fm.parse(text).body;
+    const { plain, links } = flatten(body, doc.path, core, subject.path);
     let start = -1;
     let end = -1;
+    let sentence: { text: string; start: number; end: number } | null = null;
     if (links.length > 0) {
       start = links[0]!.start;
       end = links[0]!.end;
+    } else if (mode !== "names-always" && placesLinkTo(core, doc, subject.path)) {
+      // set here by frontmatter: show the synopsis or the opening sentence, nothing to mark
+      const synopsis = fm.get(doc.fields, "synopsis");
+      const opening = typeof synopsis === "string" && synopsis.trim() ? synopsis.trim() : sentenceAround(plain, 0, 0).text;
+      sentence = { text: opening, start: 0, end: 0 };
     } else if (nameRe) {
       const m = nameRe.exec(plain);
       if (m && m.index !== undefined) {
@@ -96,8 +120,8 @@ export async function appearances(core: Core, subject: Subject): Promise<Appeara
         end = m.index + m[0].length;
       }
     }
-    if (start < 0) continue;
-    const s = sentenceAround(plain, start, end);
+    if (!sentence && start < 0) continue;
+    const s = sentence ?? sentenceAround(plain, start, end);
     out.push({
       doc,
       chapter: chapterOf(doc.path, root),
@@ -108,6 +132,17 @@ export async function appearances(core: Core, subject: Subject): Promise<Appeara
     });
   }
   return out;
+}
+
+/** Does the document's `places` frontmatter link to the subject? */
+export function placesLinkTo(core: Core, doc: Document, subjectPath: string): boolean {
+  const places = fm.get(doc.fields, "places");
+  if (!Array.isArray(places)) return false;
+  return places.some((p) => {
+    if (typeof p !== "string") return false;
+    const link = parseWikilink(p);
+    return core.host.resolveLink(link ? link.target : p, doc.path) === subjectPath;
+  });
 }
 
 interface Flattened {

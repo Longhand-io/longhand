@@ -6,7 +6,7 @@
 // answers the rest behind the same panel later. Voice rules: second person, brief, names the
 // file or scene it means, never praises the writing, one joke ever.
 
-import { appearances, readSubject, type Appearance } from "../../core/appearances.js";
+import { appearances, candidates, placesLinkTo, readSubject, type Appearance } from "../../core/appearances.js";
 import * as fm from "../../core/frontmatter.js";
 import type { Core } from "../../core/modules.js";
 import type { Document } from "../../core/spec.js";
@@ -20,11 +20,22 @@ export interface Cite {
   map?: boolean;
 }
 
+/** Something Nib offers to do. Every action is one frontmatter edit the writer can see and undo. */
+export interface Action {
+  label: string;
+  kind: "set-place" | "match-names";
+  /** the setting or character note */
+  subject: string;
+  /** the scene, for set-place */
+  scene?: string;
+}
+
 export interface Answer {
   text: string;
   cites: Cite[];
+  actions?: Action[];
   /** what kind of question this was, for tests and for the suggestion chips */
-  kind: "last-seen" | "set-at" | "unused" | "who-in" | "length" | "on-map" | "help";
+  kind: "last-seen" | "set-at" | "unused" | "who-in" | "length" | "on-map" | "audit" | "help";
 }
 
 let jokeTold = false;
@@ -55,6 +66,9 @@ export async function ask(core: Core, question: string): Promise<Answer> {
   }
   if ((m = /^who(?:'s|\s+is|\s+appears|\s+was)\s+in\s+(.+)$/i.exec(q))) {
     return whoIn(core, m[1] ?? "");
+  }
+  if ((m = /^(?:which|what)\s+scenes\s+(?:mention|name|could\s+be\s+(?:set\s+)?at|might\s+be\s+(?:set\s+)?at)\s+(.+)$/i.exec(q)) || (m = /^(?:audit|find\s+scenes\s+(?:that\s+)?mention(?:ing)?)\s+(.+)$/i.exec(q))) {
+    return audit(core, m[1] ?? "");
   }
   if ((m = /^how\s+(?:long|many\s+words)\s+(?:is|are|in)?\s*(.+)$/i.exec(q)) || (m = /^word\s*count(?:\s+(?:of|for))?\s+(.+)$/i.exec(q))) {
     return length(core, m[1] ?? "");
@@ -136,6 +150,49 @@ async function whoIn(core: Core, name: string): Promise<Answer> {
   return { kind: "who-in", text: `${present.map((c) => c.label).join(", ")} ${present.length === 1 ? "is" : "are"} in ${title}.`, cites: present };
 }
 
+/** The audit: scenes that name a place but do not count yet, each with a one-click way to attach it. */
+async function audit(core: Core, name: string): Promise<Answer> {
+  const doc = await findNote(core, name);
+  if (!doc) return unknown(name);
+  const subject = await readSubject(core, doc.path);
+  const have = await appearances(core, subject);
+  const could = await candidates(core, subject);
+  const title = subject.title;
+  if (could.length === 0) {
+    const text = have.length
+      ? `Every scene that names ${title} already counts: ${have.length} ${have.length === 1 ? "scene" : "scenes"}. No others mention it by name.`
+      : `No scene names ${title}${subject.aliases.length ? ` or “${subject.aliases.join("”, “")}”` : ""}. Nothing to attach; write the scene, or add an alias the manuscript uses.`;
+    return { kind: "audit", text, cites: have.map(citeAppearance) };
+  }
+  const actions: Action[] = could.map((a) => ({ label: `Set ${a.title} at ${title}`, kind: "set-place", subject: doc.path, scene: a.doc.path }));
+  if (!subject.matchNames) actions.push({ label: `Count every mention of ${title} from now on`, kind: "match-names", subject: doc.path });
+  return {
+    kind: "audit",
+    text: `${could.length} ${could.length === 1 ? "scene names" : "scenes name"} ${title} without counting${have.length ? ` (${have.length} already ${have.length === 1 ? "does" : "do"})` : ""}. Pick the ones that are set there, or count every mention.`,
+    cites: could.map(citeAppearance),
+    actions,
+  };
+}
+
+/** Carry out an action. Returns what Nib says afterwards. Every change is a frontmatter edit. */
+export async function perform(core: Core, action: Action): Promise<string> {
+  const subject = await core.projects.byPath(action.subject);
+  const subjectTitle = subject?.title ?? baseName(action.subject);
+  if (action.kind === "match-names") {
+    await core.spec.setField(action.subject, "match_names", true);
+    return `Name matching is on for ${subjectTitle}. Every scene that names it counts now. It is one line in that note's frontmatter.`;
+  }
+  if (!action.scene) return "Nothing to do.";
+  const scene = await core.projects.byPath(action.scene);
+  if (!scene) return `I cannot find ${action.scene} any more.`;
+  if (placesLinkTo(core, scene, action.subject)) return `${scene.title ?? baseName(scene.path)} is already set at ${subjectTitle}.`;
+  const existing = fm.get(scene.fields, "places");
+  const list = Array.isArray(existing) ? existing.filter((p): p is string => typeof p === "string") : [];
+  list.push(core.host.linkTo(action.subject, scene.path));
+  await core.spec.setField(action.scene, "places", list);
+  return `${scene.title ?? baseName(scene.path)} is set at ${subjectTitle}: a places entry in its frontmatter, nothing in the prose.`;
+}
+
 async function length(core: Core, what: string): Promise<Answer> {
   const root = await scopeRoot(core);
   const w = what.trim().toLowerCase();
@@ -197,6 +254,7 @@ function help(): Answer {
     "I answer from your files. Ask me:",
     "where was Mara last seen",
     "what is set at Stillwater",
+    "which scenes mention Harrow Wood",
     "who is in 03 Winter Fair",
     "which places have no scene",
     "how long is Part One",

@@ -6,7 +6,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import { ask, type Answer } from "./answers.js";
+import { ask, perform, type Answer } from "./answers.js";
 import { nudgesFor, type Nudge } from "./nudges.js";
 
 export const NIB_VIEW_TYPE = "longhand-nib";
@@ -160,6 +160,29 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
         list.appendChild(li);
       }
       card.appendChild(list);
+    }
+    if (a.actions && a.actions.length) {
+      const row = document.createElement("div");
+      row.className = "lh-nib-actions";
+      for (const action of a.actions) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "lh-nib-chip lh-nib-action";
+        b.textContent = action.label;
+        b.addEventListener("click", async () => {
+          b.disabled = true;
+          let said: string;
+          try {
+            said = await perform(core, action);
+          } catch (err) {
+            console.error("[longhand] nib action", err);
+            said = "That edit did not go through. The console has the detail.";
+          }
+          say(said);
+        });
+        row.appendChild(b);
+      }
+      card.appendChild(row);
     }
   };
 
@@ -332,6 +355,8 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
   let current: Nudge | null = null;
   let greeting = "";
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
+  let popTimer: ReturnType<typeof setTimeout> | null = null;
+  let announced: string | null = null;
 
   const show = () => {
     if (hideTimer) clearTimeout(hideTimer);
@@ -394,6 +419,18 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
     }
     current = nudges.find((n) => !spoken.has(n.key)) ?? null;
     renderBubble();
+    // it speaks up on its own, once per fact, after a beat, and steps back if you ignore it
+    if (current && current.key !== announced && bubble.hidden) {
+      announced = current.key;
+      if (popTimer) clearTimeout(popTimer);
+      popTimer = setTimeout(() => {
+        if (!current || bubble.hidden === false) return;
+        show();
+        hideTimer = setTimeout(() => {
+          if (document.activeElement !== input && !bubble.matches(":hover")) hide();
+        }, 9000);
+      }, 1400);
+    }
   };
 
   const handOff = async (question: string) => {
@@ -440,6 +477,7 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
     destroy() {
       unsubscribe();
       if (hideTimer) clearTimeout(hideTimer);
+      if (popTimer) clearTimeout(popTimer);
       dock.remove();
     },
   };

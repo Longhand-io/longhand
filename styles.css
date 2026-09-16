@@ -924,3 +924,19 @@
 .lh-map {
   position: relative;
 }
+
+.lh-nib-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.lh-root button.lh-nib-action {
+  border-color: var(--lh-ink);
+}
+
+.lh-root button.lh-nib-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

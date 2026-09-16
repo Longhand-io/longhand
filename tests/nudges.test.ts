@@ -30,7 +30,7 @@ test("a map notices broken pins, pinned places with no scene, and places with sc
       "Stillwater has 1 scene and is not on this map.",
     ],
   );
-  assert.equal(nudges[1]?.ask, "Which places have no scene?");
+  assert.equal(nudges[1]?.ask, "Which scenes mention The wood?");
   assert.equal(nudges[2]?.ask, "Where is Stillwater on the map?");
   assert.ok(nudges.every((n) => n.key.startsWith("Novel/Maps/Harrowmere.md:")));
 });

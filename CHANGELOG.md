@@ -19,6 +19,9 @@ Not yet cut. Scope: plugin core and the Snapshots module; see `ROADMAP.md`.
 
 - Nib, the panel: off by default, no network. A margin view with suggested questions and a question box that answers from the files: where someone was last seen, what is set at a place, who is in a scene, which places or characters have no scene, how long a scene, folder, or the manuscript is, and where a note is on a map. Every answer cites the scenes it used and opens them. Nib also sits as a character in the corner of every Longhand view: it idles, and when it has noticed something true about the view it shows a badge and a speech bubble with the observation, a follow-up question, and a question box. On a map it notices pins to notes that do not exist, pinned places with no scene, and places with scenes that are missing from the map; in a scene, that it has no text. Each observation is said once and can be dismissed. Asking hands the conversation to the sidebar, where suggestions step aside after the first question so the answers have the room. The hosted Nib will plug in behind the same panel.
 
+- Nib speaks up on its own: when it notices something new about the view on screen it opens its bubble after a beat and steps back if ignored, once per fact. "Harrow Wood has no scene yet" leads to an audit, "Which scenes mention Harrow Wood?", which lists the scenes that name the place without counting and offers one-click fixes: set a scene at the place, or count every mention from now on. Both land as one line of frontmatter.
+
 ### Spec
 
+- Documents: a `places` list of links to the settings a scene is set at, counted as an appearance without a link in the prose.
 - Map notes: `image` is optional; a map without one is a blank canvas with `width` and `height`. Accepted image formats and the relief input formats are named. Unresolved pins are kept, not dropped.

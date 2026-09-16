@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createCore } from "../src/core/modules.js";
 import { MemoryHost } from "../src/host/memory.js";
-import { ask, findNote, resetJoke, words } from "../src/modules/nib/answers.js";
+import { ask, findNote, perform, resetJoke, words } from "../src/modules/nib/answers.js";
 import { nibModule } from "../src/modules/nib/index.js";
 import { askInSidebar, clearHistory, suggest } from "../src/modules/nib/view.js";
 
@@ -122,4 +122,36 @@ test("suggestions follow the context: a map asks about its places, a scene about
   assert.ok(onMap.includes("Which places have no scene?"));
   const inScene = await suggest(core, "Novel/Manuscript/01 Part One/02 The Tin.md");
   assert.deepEqual(inScene.slice(0, 2), ["Who is in The Tin?", "How long is The Tin?"]);
+});
+
+test("audit: scenes that name a place without counting, and the two fixes land as frontmatter", async () => {
+  const host = vault();
+  host.files.set("Novel/Manuscript/02 Part Two/02 Wood.md", '---\nid: "C5"\ntype: "text"\ntitle: "Wood"\n---\nThey hid in Harrow Wood until dark.\n');
+  const core = createCore(host);
+  const a = await ask(core, "Which scenes mention Harrow Wood?");
+  assert.equal(a.kind, "audit");
+  assert.deepEqual(
+    a.cites.map((c) => c.label),
+    ["Wood"],
+  );
+  assert.deepEqual(
+    a.actions?.map((x) => x.kind),
+    ["set-place", "match-names"],
+  );
+  const said = await perform(core, a.actions![0]!);
+  assert.match(said, /^Wood is set at Harrow Wood/);
+  assert.ok(host.files.get("Novel/Manuscript/02 Part Two/02 Wood.md")!.includes('places:\n  - "[[Harrow Wood]]"\n'));
+  assert.ok(host.files.get("Novel/Manuscript/02 Part Two/02 Wood.md")!.includes("They hid in Harrow Wood until dark."), "prose untouched");
+  const after = await ask(core, "What is set at Harrow Wood?");
+  assert.deepEqual(
+    after.cites.map((c) => c.label),
+    ["Wood"],
+  );
+  const again = await perform(core, a.actions![0]!);
+  assert.match(again, /already set at/);
+  const match = await perform(core, a.actions![1]!);
+  assert.match(match, /Name matching is on/);
+  assert.ok(host.files.get("Novel/Research/Harrow Wood.md")!.includes("match_names: true"));
+  const nothingLeft = await ask(core, "audit Harrow Wood");
+  assert.match(nothingLeft.text, /already counts/);
 });

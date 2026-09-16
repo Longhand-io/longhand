@@ -64,7 +64,7 @@ async function mapNudges(core: Core, path: string): Promise<Nudge[]> {
           ? `${first.label} is on this map but no scene is set there yet.`
           : `${sceneless.length} places on this map have no scene yet: ${sceneless.map((c) => c.label).join(", ")}.`,
       cites: sceneless,
-      ask: "Which places have no scene?",
+      ask: sceneless.length === 1 ? `Which scenes mention ${first.label}?` : "Which places have no scene?",
     });
   }
   // places that carry scenes but are missing from this map
