@@ -38,21 +38,49 @@ export class ObsidianHost implements Host {
     plugin.registerEvent(this.app.vault.on("create", (f) => emit({ kind: "create", path: f.path })));
     plugin.registerEvent(this.app.vault.on("delete", (f) => emit({ kind: "delete", path: f.path })));
     plugin.registerEvent(this.app.vault.on("rename", (f, old) => emit({ kind: "rename", path: f.path, oldPath: old })));
-    plugin.registerEvent(this.app.workspace.on("file-open", (file) => this.maybeSwap(file)));
+    plugin.registerEvent(this.app.workspace.on("file-open", (file) => void this.maybeSwap(file)));
+    plugin.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        const v = leaf?.view;
+        if (v instanceof MarkdownView && v.file) void this.maybeSwap(v.file);
+      }),
+    );
+    this.app.workspace.onLayoutReady(() => {
+      for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+        const v = leaf.view;
+        if (v instanceof MarkdownView && v.file) void this.maybeSwap(v.file, leaf);
+      }
+    });
   }
 
-  /** A note just opened in the active pane as Markdown; swap in the auto view if one claims it. */
-  private maybeSwap(file: TFile | null): void {
-    if (!file || file.extension !== "md") return;
-    if (this.bypass.delete(file.path)) return;
-    const auto = this.autoViews.find((a) => a.when(file.path));
+  /** A note is showing as Markdown; swap in the auto view if one claims it. */
+  private async maybeSwap(file: TFile | null, only?: WorkspaceLeaf): Promise<void> {
+    if (!file || file.extension !== "md" || this.autoViews.length === 0) return;
+    if (this.bypass.has(file.path)) {
+      this.bypass.delete(file.path);
+      return;
+    }
+    let auto = this.autoViews.find((a) => a.when(file.path));
+    if (!auto && !this.app.metadataCache.getFileCache(file)) {
+      // the cache has not indexed this note yet; read the frontmatter ourselves
+      const text = await this.app.vault.cachedRead(file);
+      const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+      const type = m ? /^type:\s*"?([A-Za-z]+)"?\s*$/m.exec(m[1] ?? "")?.[1] : undefined;
+      if (type) auto = this.autoViews.find((a) => a.when(file.path) || this.typeClaims(a, type));
+    }
     if (!auto) return;
-    const leaf = this.app.workspace.getLeaf(false);
-    const view = leaf.view;
-    if (!(view instanceof MarkdownView) || view.file?.path !== file.path) return;
-    const state = { path: file.path };
-    // let Obsidian finish opening the Markdown view before replacing it
-    window.setTimeout(() => void leaf.setViewState({ type: auto.type, state, active: true }), 0);
+    const leaves = only
+      ? [only]
+      : this.app.workspace.getLeavesOfType("markdown").filter((l) => (l.view as MarkdownView).file?.path === file.path);
+    for (const leaf of leaves) {
+      const state = { path: file.path };
+      // let Obsidian finish opening the Markdown view before replacing it
+      window.setTimeout(() => void leaf.setViewState({ type: auto!.type, state, active: true }), 0);
+    }
+  }
+
+  private typeClaims(auto: { type: string; when: (path: string) => boolean }, noteType: string): boolean {
+    return auto.type === `longhand-${noteType}`;
   }
 
   private file(path: string): TFile | null {
