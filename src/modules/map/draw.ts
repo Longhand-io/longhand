@@ -5,7 +5,7 @@
 // hosts the tools. Coordinates on the note are fractions; here they are user units in a
 // viewBox 1000 wide, so strokes, glyphs, and text scale with the map. No drawing library.
 
-import type { Shape, ShapeStyle, ShapeType } from "../../core/spec.js";
+import type { Shape, ShapeColor, ShapeStyle, ShapeType } from "../../core/spec.js";
 import { alongLine, bounds, centroid, midpoint, simplify, type Point } from "./geometry.js";
 
 export type Tool = "select" | "circle" | "rect" | "polygon" | "line" | "text";
@@ -35,6 +35,8 @@ export interface DrawLayer {
   setTool(tool: Tool): void;
   tool(): Tool;
   setStyle(style: ShapeStyle): void;
+  setColor(color: ShapeColor | null): void;
+  setHand(hand: boolean): void;
   select(id: string | null): void;
   selected(): Shape | null;
   destroy(): void;
@@ -54,6 +56,8 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
   let vbH = VB_W / aspect;
   let currentTool: Tool = "select";
   let currentStyle: ShapeStyle = "outline";
+  let currentColor: ShapeColor | null = null;
+  let currentHand = false;
   let selectedId: string | null = null;
   const groups = new Map<string, SVGGElement>();
 
@@ -79,13 +83,25 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
 
   const renderShape = (s: Shape): SVGGElement => {
     const style = s.style ?? "outline";
-    const g = el("g", { class: `lh-shape lh-shape-${s.type} lh-style-${style}`, "data-id": s.id }) as SVGGElement;
+    const g = el("g", { class: `lh-shape lh-shape-${s.type} lh-style-${style}${s.hand ? " lh-shape-hand" : ""}`, "data-id": s.id }) as SVGGElement;
+    const color = s.color ?? null;
     let labelAt: Point | null = null;
+    // the shape as one outline in user units; hand-drawn rendering works from this
+    const outline = (pts: Point[], closed: boolean) => {
+      if (s.hand && style !== "hills") {
+        g.appendChild(el("path", { d: pathOf(pts, closed), fill: "transparent", stroke: "transparent", "stroke-width": 18, class: "lh-hit" }));
+        for (const p of sketch(pts, closed, s.id, paint(style, closed, color))) g.appendChild(p);
+        return;
+      }
+      if (!closed) g.appendChild(el("path", { d: pathOf(pts, false), fill: "none", stroke: "transparent", "stroke-width": 18, class: "lh-hit" }));
+      g.appendChild(el("path", { d: pathOf(pts, closed), ...paint(style, closed, color) }));
+    };
     switch (s.type) {
       case "circle": {
         const [cx, cy] = toUser([s.x ?? 0, s.y ?? 0]);
         const r = (s.r ?? 0) * VB_W;
-        g.appendChild(el("circle", { cx, cy, r, ...paint(style, true) }));
+        if (s.hand) outline(circlePoints(cx, cy, r), true);
+        else g.appendChild(el("circle", { cx, cy, r, ...paint(style, true, color) }));
         if (style === "hills") g.appendChild(peaksInside(cx - r, cy - r, r * 2, r * 2, (x, y) => Math.hypot(x - cx, y - cy) < r));
         labelAt = [cx, cy];
         break;
@@ -94,15 +110,15 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
         const [x, y] = toUser([(s.x ?? 0) - (s.w ?? 0) / 2, (s.y ?? 0) - (s.h ?? 0) / 2]);
         const w = (s.w ?? 0) * VB_W;
         const h = (s.h ?? 0) * vbH;
-        g.appendChild(el("rect", { x, y, width: w, height: h, ...paint(style, true) }));
+        if (s.hand) outline([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], true);
+        else g.appendChild(el("rect", { x, y, width: w, height: h, ...paint(style, true, color) }));
         if (style === "hills") g.appendChild(peaksInside(x, y, w, h, () => true));
         labelAt = [x + w / 2, y + h / 2];
         break;
       }
       case "polygon": {
         const pts = (s.points ?? []).map(toUser);
-        const d = pathOf(pts, true);
-        g.appendChild(el("path", { d, ...paint(style, true) }));
+        outline(pts, true);
         if (style === "hills") {
           const b = bounds(pts);
           g.appendChild(peaksInside(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY, (x, y) => inPolygon([x, y], pts)));
@@ -112,14 +128,12 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
       }
       case "line": {
         const pts = (s.points ?? []).map(toUser);
-        const d = pathOf(pts, false);
         if (style === "hills") {
-          g.appendChild(el("path", { d, fill: "none", stroke: "transparent", "stroke-width": 24 }));
+          g.appendChild(el("path", { d: pathOf(pts, false), fill: "none", stroke: "transparent", "stroke-width": 24 }));
           g.appendChild(peaksAlong(pts));
         } else {
-          g.appendChild(el("path", { d, fill: "none", stroke: "transparent", "stroke-width": 18, class: "lh-hit" }));
-          g.appendChild(el("path", { d, ...paint(style, false) }));
-          if (style === "route" && pts.length >= 2) g.appendChild(arrowHead(pts));
+          outline(pts, false);
+          if (style === "route" && pts.length >= 2) g.appendChild(arrowHead(pts, color));
         }
         labelAt = midpoint(pts);
         if (labelAt) labelAt = [labelAt[0], labelAt[1] - 8];
@@ -128,6 +142,7 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
       case "text": {
         const [x, y] = toUser([s.x ?? 0, s.y ?? 0]);
         const t = el("text", { x, y, class: "lh-shape-label lh-shape-text", "font-size": TEXT_SIZE, "text-anchor": "middle" });
+        if (color) t.setAttribute("fill", colorVar(color));
         t.textContent = s.label ?? "";
         g.appendChild(t);
         labelAt = null;
@@ -136,6 +151,7 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
     }
     if (labelAt && s.label) {
       const t = el("text", { x: labelAt[0], y: labelAt[1], class: "lh-shape-label", "font-size": LABEL_SIZE, "text-anchor": "middle" });
+      if (color) t.setAttribute("fill", colorVar(color));
       t.textContent = s.label;
       g.appendChild(t);
     }
@@ -301,7 +317,7 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
   svg.addEventListener("pointercancel", finishDrawing);
 
   const previewOf = (tool: Tool, start: Point, p: Point, points: Point[]): SVGElement | null => {
-    const paintAttrs = { ...paint(currentStyle, tool === "polygon"), class: "lh-draw-preview" };
+    const paintAttrs = { ...paint(currentStyle, tool === "polygon", currentColor), class: "lh-draw-preview" };
     switch (tool) {
       case "circle":
         return el("circle", { cx: start[0], cy: start[1], r: Math.hypot(p[0] - start[0], p[1] - start[1]), ...paintAttrs });
@@ -316,7 +332,7 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
       case "polygon":
         return el("path", { d: pathOf(points, true), ...paintAttrs });
       case "line":
-        return el("path", { d: pathOf(points, false), fill: "none", ...paint(currentStyle, false), class: "lh-draw-preview" });
+        return el("path", { d: pathOf(points, false), fill: "none", ...paint(currentStyle, false, currentColor), class: "lh-draw-preview" });
       default:
         return null;
     }
@@ -324,30 +340,32 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
 
   const shapeFrom = (tool: Tool, start: Point, p: Point, points: Point[]): Shape | null => {
     const id = opts.newId();
-    const style = currentStyle;
+    const base: Partial<Shape> = { style: currentStyle };
+    if (currentColor) base.color = currentColor;
+    if (currentHand) base.hand = true;
     switch (tool) {
       case "circle": {
         const r = Math.hypot(p[0] - start[0], p[1] - start[1]);
         if (r < MIN_DRAG) return null;
         const [x, y] = toFrac(start);
-        return { id, type: "circle", x, y, r: r / VB_W, style };
+        return { id, type: "circle", x, y, r: r / VB_W, ...base };
       }
       case "rect": {
         const w = Math.abs(p[0] - start[0]);
         const h = Math.abs(p[1] - start[1]);
         if (w < MIN_DRAG || h < MIN_DRAG) return null;
         const [x, y] = toFrac([(start[0] + p[0]) / 2, (start[1] + p[1]) / 2]);
-        return { id, type: "rect", x, y, w: w / VB_W, h: h / vbH, style };
+        return { id, type: "rect", x, y, w: w / VB_W, h: h / vbH, ...base };
       }
       case "polygon": {
         const pts = simplify(points, SIMPLIFY_TOLERANCE);
         if (pts.length < 3) return null;
-        return { id, type: "polygon", points: pts.map(toFrac), style };
+        return { id, type: "polygon", points: pts.map(toFrac), ...base };
       }
       case "line": {
         const pts = simplify(points, SIMPLIFY_TOLERANCE);
         if (pts.length < 2) return null;
-        return { id, type: "line", points: pts.map(toFrac), style };
+        return { id, type: "line", points: pts.map(toFrac), ...base };
       }
       default:
         return null;
@@ -387,6 +405,12 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
     setStyle(style) {
       currentStyle = style;
     },
+    setColor(color) {
+      currentColor = color;
+    },
+    setHand(hand) {
+      currentHand = hand;
+    },
     select,
     selected: () => shapes.find((x) => x.id === selectedId) ?? null,
     destroy() {
@@ -397,7 +421,18 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
 
 // ---- the paper-and-ink palette ----
 
-function paint(style: ShapeStyle, closed: boolean): { [attr: string]: string | number } {
+export function colorVar(color: ShapeColor): string {
+  return `var(--lh-color-${color})`;
+}
+
+function paint(style: ShapeStyle, closed: boolean, color: ShapeColor | null = null): { [attr: string]: string | number } {
+  const attrs = basePaint(style, closed);
+  // a named ink recolours the stroke of the ink-drawn styles; the terrain styles keep their own palette
+  if (color && (style === "outline" || style === "road" || style === "route")) attrs["stroke"] = colorVar(color);
+  return attrs;
+}
+
+function basePaint(style: ShapeStyle, closed: boolean): { [attr: string]: string | number } {
   switch (style) {
     case "wood":
       return closed ? { fill: "url(#lh-wood)", stroke: "#9AA898", "stroke-width": 1 } : { fill: "none", stroke: "#9AA898", "stroke-width": 1.5 };
@@ -457,14 +492,103 @@ function peaksInside(x: number, y: number, w: number, h: number, inside: (px: nu
   return g;
 }
 
-function arrowHead(pts: Point[]): SVGElement {
+// ---- hand-drawn strokes: a wavering double line, seeded by the shape id so it never jitters on re-render ----
+
+function seeded(seed: string): () => number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822519);
+    h = Math.imul(h ^ (h >>> 13), 3266489917);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+function resample(pts: Point[], closed: boolean, spacing: number): Point[] {
+  const src = closed && pts.length > 1 ? [...pts, pts[0]!] : pts;
+  const out: Point[] = [];
+  for (let i = 0; i < src.length - 1; i++) {
+    const a = src[i]!;
+    const b = src[i + 1]!;
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const n = Math.max(1, Math.round(len / spacing));
+    for (let k = 0; k < n; k++) {
+      const t = k / n;
+      out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+  }
+  if (!closed && src.length) out.push(src[src.length - 1]!);
+  return out;
+}
+
+function sketch(pts: Point[], closed: boolean, seed: string, paintAttrs: { [attr: string]: string | number }): SVGElement[] {
+  const out: SVGElement[] = [];
+  const fillAttrs = { ...paintAttrs, stroke: "none" };
+  const strokeAttrs = { ...paintAttrs, fill: "none" };
+  const width = Number(paintAttrs["stroke-width"] ?? 1.2);
+  if (closed && paintAttrs["fill"] !== "none") out.push(el("path", { d: pathOf(pts, true), ...fillAttrs }));
+  for (let pass = 0; pass < 2; pass++) {
+    const rnd = seeded(`${seed}:${pass}`);
+    const amp = 1.6 + pass * 0.6;
+    const wobble = rnd() * Math.PI * 2;
+    const jittered = resample(pts, closed, 9).map(([x, y], i) => [
+      x + (rnd() - 0.5) * amp + Math.sin(i * 0.35 + wobble) * 0.9,
+      y + (rnd() - 0.5) * amp + Math.cos(i * 0.31 + wobble) * 0.9,
+    ] as Point);
+    out.push(
+      el("path", {
+        d: smoothPath(jittered, closed),
+        ...strokeAttrs,
+        "stroke-width": pass === 0 ? width * 1.15 : width * 0.8,
+        opacity: pass === 0 ? 1 : 0.55,
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+      }),
+    );
+  }
+  return out;
+}
+
+function smoothPath(pts: Point[], closed: boolean): string {
+  if (pts.length < 3) return pathOf(pts, closed);
+  const all = closed ? [...pts, pts[0]!, pts[1]!] : pts;
+  let d = `M${all[0]![0].toFixed(1)} ${all[0]![1].toFixed(1)}`;
+  for (let i = 1; i < all.length - 1; i++) {
+    const c = all[i]!;
+    const n = all[i + 1]!;
+    d += ` Q${c[0].toFixed(1)} ${c[1].toFixed(1)} ${((c[0] + n[0]) / 2).toFixed(1)} ${((c[1] + n[1]) / 2).toFixed(1)}`;
+  }
+  if (!closed) {
+    const last = all[all.length - 1]!;
+    d += ` L${last[0].toFixed(1)} ${last[1].toFixed(1)}`;
+  }
+  return d;
+}
+
+function circlePoints(cx: number, cy: number, r: number): Point[] {
+  const out: Point[] = [];
+  const n = Math.max(24, Math.min(96, Math.round(r / 3)));
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    out.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+  }
+  return out;
+}
+
+function arrowHead(pts: Point[], color: ShapeColor | null = null): SVGElement {
   const a = pts[pts.length - 2]!;
   const b = pts[pts.length - 1]!;
   const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
   const size = 9;
   const p1: Point = [b[0] - size * Math.cos(angle - 0.5), b[1] - size * Math.sin(angle - 0.5)];
   const p2: Point = [b[0] - size * Math.cos(angle + 0.5), b[1] - size * Math.sin(angle + 0.5)];
-  return el("path", { d: `M${p1[0]} ${p1[1]} L${b[0]} ${b[1]} L${p2[0]} ${p2[1]}`, fill: "none", stroke: "var(--lh-ink)", "stroke-width": 1.6, "stroke-linecap": "round" });
+  return el("path", {
+    d: `M${p1[0]} ${p1[1]} L${b[0]} ${b[1]} L${p2[0]} ${p2[1]}`,
+    fill: "none",
+    stroke: color ? colorVar(color) : "var(--lh-ink)",
+    "stroke-width": 1.6,
+    "stroke-linecap": "round",
+  });
 }
 
 function pathOf(pts: Point[], closed: boolean): string {
@@ -503,14 +627,42 @@ function el(name: string, attrs: { [attr: string]: string | number } = {}): SVGE
   return e;
 }
 
-export const TOOLS: { id: Tool; label: string; hint: string }[] = [
-  { id: "select", label: "Select", hint: "Click a shape to select it, drag to move it" },
-  { id: "circle", label: "Circle", hint: "Drag from the centre" },
-  { id: "rect", label: "Rectangle", hint: "Drag a corner" },
-  { id: "polygon", label: "Region", hint: "Draw around an area; it closes itself" },
-  { id: "line", label: "Line", hint: "Draw a river, road, or route" },
-  { id: "text", label: "Label", hint: "Click where the words go" },
+export interface ToolDef {
+  id: Tool;
+  label: string;
+  hint: string;
+  /** letter shortcut and number shortcut, like a drawing app */
+  key: string;
+  num: string;
+  /** inline SVG body, 24 by 24, stroked in currentColor */
+  icon: string;
+}
+
+export const TOOLS: ToolDef[] = [
+  { id: "select", label: "Select", hint: "Click a shape to select it, drag to move it", key: "v", num: "1", icon: '<path d="M5 3l7.5 17 2.2-6.8L21.5 11z"/>' },
+  { id: "rect", label: "Rectangle", hint: "Drag a corner", key: "r", num: "2", icon: '<rect x="4" y="5" width="16" height="14" rx="1.5"/>' },
+  { id: "circle", label: "Circle", hint: "Drag from the centre", key: "o", num: "3", icon: '<circle cx="12" cy="12" r="8"/>' },
+  { id: "polygon", label: "Region", hint: "Draw around an area; it closes itself", key: "p", num: "4", icon: '<path d="M4 20l4-1L18.5 8.5a2.1 2.1 0 0 0-3-3L5 16z"/><path d="M13 7l3 3"/>' },
+  { id: "line", label: "Line", hint: "Draw a river, road, or route", key: "l", num: "5", icon: '<path d="M5 19L19 5"/>' },
+  { id: "text", label: "Label", hint: "Click where the words go", key: "t", num: "6", icon: '<path d="M6 6h12M12 6v13M9 19h6"/>' },
 ];
+
+export const ICONS = {
+  undo: '<path d="M4 5v5h5"/><path d="M4.5 10A8 8 0 1 1 6 16.5"/>',
+  hand: '<path d="M3 13c2.5-5 5-5 7.5 0s5 5 7.5 0"/><path d="M3 18c2.5-5 5-5 7.5 0s5 5 7.5 0" opacity=".45"/>',
+  clean: '<path d="M3 12h18"/>',
+};
+
+export const COLOR_LABELS: { [k in ShapeColor]: string } = {
+  ink: "Ink",
+  graphite: "Graphite",
+  red: "Red",
+  blue: "Blue",
+  green: "Green",
+  yellow: "Yellow",
+  sea: "Sea",
+  moss: "Moss",
+};
 
 export const STYLE_LABELS: { [k in ShapeStyle]: string } = {
   outline: "Outline",

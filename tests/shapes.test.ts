@@ -32,6 +32,8 @@ shapes:
     x: 0.6
     y: 0.7
     r: 0.02
+    color: "red"
+    hand: true
     label: "Whitby"
     tags: ["town"]
   - id: "bad"
@@ -66,6 +68,20 @@ test("shapes parse from the note; a polygon with one point is dropped", async ()
     [0.22, 0.62],
   ]);
   assert.deepEqual(note.shapes[2]!.tags, ["town"]);
+  assert.equal(note.shapes[2]!.color, "red");
+  assert.equal(note.shapes[2]!.hand, true);
+});
+
+test("colour and hand survive a rewrite, and clearing them removes the fields", async () => {
+  const host = vault();
+  const core = createCore(host);
+  const m = new MapModel(core, "Novel/Maps/Harrowmere.md");
+  await m.updateShape("s-town", { label: "Whitby town" });
+  let text = host.files.get("Novel/Maps/Harrowmere.md")!;
+  assert.ok(text.includes('    color: "red"\n    hand: true\n    label: "Whitby town"\n'));
+  await m.updateShape("s-town", { color: undefined, hand: undefined });
+  text = host.files.get("Novel/Maps/Harrowmere.md")!;
+  assert.ok(!text.includes("color:") && !text.includes("hand:"));
 });
 
 test("writing shapes touches only the shapes block and keeps the SVG-style points string", async () => {

@@ -13,6 +13,15 @@
   --lh-font-body: "Newsreader", Georgia, "Times New Roman", serif;
   --lh-font-ui: var(--font-interface, system-ui, sans-serif);
   --lh-card-radius: 2px;
+  /* named inks for drawn shapes; a theme may retune them */
+  --lh-color-ink: var(--lh-ink);
+  --lh-color-graphite: var(--lh-graphite);
+  --lh-color-red: #b65a52;
+  --lh-color-blue: #4c6a9a;
+  --lh-color-green: #5e8a5c;
+  --lh-color-yellow: #c9a24a;
+  --lh-color-sea: #6f8c9c;
+  --lh-color-moss: #7e9a6b;
   color: var(--lh-ink);
   font-family: var(--lh-font-ui);
 }
@@ -501,4 +510,60 @@
 
 .theme-dark .lh-shape-label {
   stroke: var(--lh-paper);
+}
+
+/* ---- icon toolbar ---- */
+
+.lh-map-tool svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -3px;
+}
+
+.lh-map-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 2rem;
+  justify-content: center;
+}
+
+.lh-map-divider {
+  width: 1px;
+  height: 1.4rem;
+  margin: 0 0.3rem;
+  background: var(--lh-rule);
+}
+
+.lh-map-swatches {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.lh-map-swatch {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  border: 1px solid var(--lh-rule);
+  border-radius: 50%;
+  background: var(--swatch, transparent);
+  cursor: pointer;
+}
+
+.lh-map-swatch-none {
+  background: linear-gradient(135deg, transparent 45%, var(--lh-graphite) 45%, var(--lh-graphite) 55%, transparent 55%);
+}
+
+.lh-map-swatch:hover {
+  border-color: var(--lh-ink);
+}
+
+.lh-map-swatch-active {
+  box-shadow: 0 0 0 2px var(--lh-paper), 0 0 0 3.5px var(--lh-ink);
 }

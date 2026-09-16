@@ -127,6 +127,8 @@ shapes:
     type: polygon                # circle | rect | polygon | line | text
     points: "0.2,0.5 0.3,0.45 0.35,0.6 0.22,0.62"   # polygon, line: SVG points syntax
     style: wood                  # outline | wood | water | hills | road | river | route
+    color: moss                  # optional named ink: ink | graphite | red | blue | green | yellow | sea | moss
+    hand: true                   # optional: drawn by hand, a wavering line rather than a clean one
     label: Harrow Wood
     to: "[[Harrow Wood]]"
   - id: s-7fh3xd

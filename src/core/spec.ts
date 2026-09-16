@@ -31,6 +31,8 @@ export interface Pin {
 export type ShapeType = "circle" | "rect" | "polygon" | "line" | "text";
 export type ShapeStyle = "outline" | "wood" | "water" | "hills" | "road" | "river" | "route";
 export const SHAPE_STYLES: ShapeStyle[] = ["outline", "wood", "water", "hills", "road", "river", "route"];
+export type ShapeColor = "ink" | "graphite" | "red" | "blue" | "green" | "yellow" | "sea" | "moss";
+export const SHAPE_COLORS: ShapeColor[] = ["ink", "graphite", "red", "blue", "green", "yellow", "sea", "moss"];
 
 /** A drawn shape on a map. Coordinates are fractions of the drawn width and height, like pins. */
 export interface Shape {
@@ -47,6 +49,10 @@ export interface Shape {
   /** polygon, line: the points */
   points?: [number, number][];
   style?: ShapeStyle;
+  /** a named ink from the brand palette; themes map names to values */
+  color?: ShapeColor;
+  /** drawn by hand: a slightly wavering double stroke instead of a clean one */
+  hand?: boolean;
   label?: string;
   to?: string;
   tags?: string[];
@@ -179,6 +185,9 @@ function shapeFromValue(v: Value): Shape | null {
   if (pts !== null) s.points = parsePoints(pts);
   const style = str(v["style"]);
   if (style !== null && (SHAPE_STYLES as string[]).includes(style)) s.style = style as ShapeStyle;
+  const color = str(v["color"]);
+  if (color !== null && (SHAPE_COLORS as string[]).includes(color)) s.color = color as ShapeColor;
+  if (v["hand"] === true) s.hand = true;
   const label = str(v["label"]);
   if (label !== null) s.label = label;
   const to = str(v["to"]);
@@ -199,6 +208,8 @@ function shapeToValue(s: Shape): { [k: string]: Value } {
   if (s.h !== undefined) o["h"] = round(s.h);
   if (s.points) o["points"] = formatPoints(s.points);
   if (s.style) o["style"] = s.style;
+  if (s.color) o["color"] = s.color;
+  if (s.hand) o["hand"] = true;
   if (s.label !== undefined && s.label !== "") o["label"] = s.label;
   if (s.to) o["to"] = s.to;
   if (s.tags && s.tags.length) o["tags"] = s.tags;

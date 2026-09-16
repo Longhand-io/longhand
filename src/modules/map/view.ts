@@ -10,9 +10,9 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import { SHAPE_STYLES, type Pin, type Shape, type ShapeStyle } from "../../core/spec.js";
+import { SHAPE_COLORS, SHAPE_STYLES, type Pin, type Shape, type ShapeColor, type ShapeStyle } from "../../core/spec.js";
 import { createPlaceCard, type PlaceCard } from "./card.js";
-import { createDrawLayer, STYLE_LABELS, TOOLS, type Tool } from "./draw.js";
+import { COLOR_LABELS, ICONS, STYLE_LABELS, TOOLS, createDrawLayer, type Tool } from "./draw.js";
 import { MapModel, type ResolvedMap } from "./model.js";
 
 const DRAG_THRESHOLD = 4; // px before a press becomes a drag
@@ -46,17 +46,67 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   // ---- tools row ----
   const tools = document.createElement("div");
   tools.className = "lh-map-tools";
-  const toolButtons = new Map<Tool, HTMLButtonElement>();
-  for (const t of TOOLS) {
+  const iconButton = (icon: string, title: string, label?: string): HTMLButtonElement => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "lh-map-tool";
-    b.textContent = t.label;
-    b.title = t.hint;
+    b.title = title;
+    b.setAttribute("aria-label", title);
+    b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>`;
+    if (label) b.append(document.createTextNode(label));
+    return b;
+  };
+  const toolButtons = new Map<Tool, HTMLButtonElement>();
+  for (const t of TOOLS) {
+    const b = iconButton(t.icon, `${t.label} — ${t.key.toUpperCase()} or ${t.num}. ${t.hint}`);
     b.addEventListener("click", () => setTool(t.id));
     toolButtons.set(t.id, b);
     tools.appendChild(b);
   }
+  const divider = () => {
+    const d = document.createElement("span");
+    d.className = "lh-map-divider";
+    return d;
+  };
+  tools.appendChild(divider());
+  let handMode = false;
+  const handBtn = iconButton(ICONS.hand, "Hand-drawn — H. New shapes get a wavering pen line instead of a clean one");
+  handBtn.addEventListener("click", () => setHand(!handMode));
+  const setHand = (on: boolean) => {
+    handMode = on;
+    handBtn.classList.toggle("lh-map-tool-active", on);
+    layer.setHand(on);
+  };
+  tools.appendChild(handBtn);
+  const swatchRow = (onPick: (c: ShapeColor | null) => void): { el: HTMLElement; set: (c: ShapeColor | null) => void } => {
+    const row = document.createElement("span");
+    row.className = "lh-map-swatches";
+    const buttons = new Map<ShapeColor | null, HTMLButtonElement>();
+    const make = (c: ShapeColor | null) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "lh-map-swatch";
+      b.title = c ? COLOR_LABELS[c] : "Default ink for the style";
+      if (c) b.style.setProperty("--swatch", `var(--lh-color-${c})`);
+      else b.classList.add("lh-map-swatch-none");
+      b.addEventListener("click", () => {
+        set(c);
+        onPick(c);
+      });
+      buttons.set(c, b);
+      row.appendChild(b);
+    };
+    make(null);
+    for (const c of SHAPE_COLORS) make(c);
+    const set = (c: ShapeColor | null) => {
+      for (const [k, b] of buttons) b.classList.toggle("lh-map-swatch-active", k === c);
+    };
+    set(null);
+    return { el: row, set };
+  };
+  const toolSwatches = swatchRow((c) => layer.setColor(c));
+  tools.appendChild(toolSwatches.el);
+  tools.appendChild(divider());
   const styleSelect = document.createElement("select");
   styleSelect.className = "lh-map-style";
   styleSelect.title = "Style for new shapes";
@@ -67,11 +117,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     styleSelect.appendChild(o);
   }
   styleSelect.addEventListener("change", () => layer.setStyle(styleSelect.value as ShapeStyle));
-  const undoBtn = document.createElement("button");
-  undoBtn.type = "button";
-  undoBtn.className = "lh-map-tool";
-  undoBtn.textContent = "Undo";
-  undoBtn.title = "Undo the last drawing change (Cmd or Ctrl+Z)";
+  const undoBtn = iconButton(ICONS.undo, "Undo the last drawing change — Cmd or Ctrl+Z");
   undoBtn.disabled = true;
   undoBtn.addEventListener("click", () => void undo());
   tools.append(styleSelect, undoBtn);
@@ -86,6 +132,12 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   propLabel.className = "lh-map-prop-label";
   const propStyle = styleSelect.cloneNode(true) as HTMLSelectElement;
   propStyle.title = "Style";
+  const propHand = iconButton(ICONS.hand, "Hand-drawn");
+  propHand.addEventListener("click", () => {
+    const s = layer.selected();
+    if (s) void selectedPatch({ hand: s.hand ? undefined : true });
+  });
+  const propSwatches = swatchRow((c) => void selectedPatch({ color: c ?? undefined }));
   const propLink = document.createElement("button");
   propLink.type = "button";
   propLink.className = "lh-map-tool";
@@ -97,7 +149,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   propDelete.type = "button";
   propDelete.className = "lh-map-tool lh-map-tool-danger";
   propDelete.textContent = "Delete";
-  props.append(propLabel, propStyle, propLink, propUnlink, propDelete);
+  props.append(propLabel, propStyle, propHand, propSwatches.el, propLink, propUnlink, propDelete);
 
   const scroll = document.createElement("div");
   scroll.className = "lh-map-scroll";
@@ -142,6 +194,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     layer.setTool(tool);
     for (const [id, b] of toolButtons) b.classList.toggle("lh-map-tool-active", id === tool);
     hint.textContent = TOOLS.find((t) => t.id === tool)?.hint ?? "";
+    root.focus({ preventScroll: true });
   };
 
   const showProps = (shape: Shape | null) => {
@@ -150,6 +203,9 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     propLabel.value = shape.label ?? "";
     propStyle.value = shape.style ?? "outline";
     propStyle.disabled = shape.type === "text";
+    propHand.classList.toggle("lh-map-tool-active", !!shape.hand);
+    propHand.disabled = shape.type === "text";
+    propSwatches.set(shape.color ?? null);
     const target = model.targetOfShape(shape);
     propLink.textContent = shape.to ? `Linked: ${shape.to}` : "Link to note…";
     propLink.classList.toggle("lh-map-pin-unresolved", !!shape.to && !target);
@@ -190,6 +246,16 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     } else if (ev.key === "Escape" && !inField) {
       if (layer.tool() !== "select") setTool("select");
       else layer.select(null);
+    } else if (!inField && !ev.metaKey && !ev.ctrlKey && !ev.altKey) {
+      const k = ev.key.toLowerCase();
+      const tool = TOOLS.find((t) => t.key === k || t.num === k);
+      if (tool) {
+        ev.preventDefault();
+        setTool(tool.id);
+      } else if (k === "h") {
+        ev.preventDefault();
+        setHand(!handMode);
+      }
     }
   });
 
@@ -514,6 +580,8 @@ function cleanShape(s: Shape): Shape {
   if (s.h !== undefined) out.h = s.h;
   if (s.points) out.points = s.points;
   if (s.style) out.style = s.style;
+  if (s.color) out.color = s.color;
+  if (s.hand) out.hand = true;
   if (s.label) out.label = s.label;
   if (s.to) out.to = s.to;
   if (s.tags && s.tags.length) out.tags = s.tags;

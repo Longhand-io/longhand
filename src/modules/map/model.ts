@@ -132,6 +132,8 @@ function clean(s: Shape): Shape {
   if (s.h !== undefined) out.h = s.h;
   if (s.points) out.points = s.points;
   if (s.style) out.style = s.style;
+  if (s.color) out.color = s.color;
+  if (s.hand) out.hand = true;
   if (s.label) out.label = s.label;
   if (s.to) out.to = s.to;
   if (s.tags && s.tags.length) out.tags = s.tags;
