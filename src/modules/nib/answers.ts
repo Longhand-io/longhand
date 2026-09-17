@@ -35,7 +35,32 @@ export interface Answer {
   cites: Cite[];
   actions?: Action[];
   /** what kind of question this was, for tests and for the suggestion chips */
-  kind: "last-seen" | "set-at" | "unused" | "who-in" | "length" | "on-map" | "audit" | "help";
+  kind: "last-seen" | "set-at" | "unused" | "who-in" | "length" | "on-map" | "audit" | "open" | "help";
+}
+
+/** Where Nib is looking: the active note's project, the whole vault, or nowhere yet. */
+export interface Scope {
+  kind: "project" | "vault" | "none";
+  root: string;
+  title: string;
+}
+
+export async function scopeOf(core: Core, path: string | null = core.host.activeFile()): Promise<Scope> {
+  if (!path) return { kind: "none", root: "", title: "" };
+  const project = await core.projects.projectOf(path);
+  if (!project) return { kind: "vault", root: "", title: "the whole vault" };
+  const note = await core.spec.read(project.notePath);
+  return { kind: "project", root: project.root, title: note.title ?? (project.root || "this vault") };
+}
+
+/** Every project with its title, for offering one to open. */
+export async function projectsToOpen(core: Core): Promise<{ title: string; notePath: string; root: string }[]> {
+  const out: { title: string; notePath: string; root: string }[] = [];
+  for (const p of await core.projects.roots()) {
+    const note = await core.spec.read(p.notePath);
+    out.push({ title: note.title ?? (p.root || "Vault"), notePath: p.notePath, root: p.root });
+  }
+  return out;
 }
 
 let jokeTold = false;
@@ -48,6 +73,10 @@ export function resetJoke(): void {
 export async function ask(core: Core, question: string): Promise<Answer> {
   const q = question.trim().replace(/[?.!]+$/, "");
   let m: RegExpExecArray | null;
+
+  if ((m = /^(?:open|go\s+to|show\s+me)\s+(.+)$/i.exec(q))) {
+    return open(core, m[1] ?? "");
+  }
 
   if ((m = /^(?:where|when)\s+(?:was|is|were|are)\s+(.+?)\s+last(?:\s+seen)?$/i.exec(q)) || (m = /^last\s+seen[:\s]+(.+)$/i.exec(q)) || (m = /^where(?:'s|\s+is|\s+was)\s+(.+?)(?:\s+now)?$/i.exec(q))) {
     if (!/\bon\s+(?:the|a)\s+map$/i.test(q)) return lastSeen(core, m[1] ?? "");
@@ -77,6 +106,28 @@ export async function ask(core: Core, question: string): Promise<Answer> {
 }
 
 // ---- the answers ----
+
+/** Open a project by title, or a note by name. The way in when nothing is open. */
+async function open(core: Core, name: string): Promise<Answer> {
+  const n = name.trim().toLowerCase().replace(/^(?:the\s+)/, "");
+  for (const p of await projectsToOpen(core)) {
+    if (p.title.toLowerCase() === n || p.root.toLowerCase() === n) {
+      await core.host.openNote(p.notePath);
+      return { kind: "open", text: `${p.title} is open. Ask me about it.`, cites: [{ label: p.title, path: p.notePath }] };
+    }
+  }
+  const doc = await findNote(core, name);
+  if (doc) {
+    await core.host.openNote(doc.path);
+    return { kind: "open", text: `${doc.title ?? baseName(doc.path)} is open.`, cites: [cite(doc)] };
+  }
+  const projects = await projectsToOpen(core);
+  return {
+    kind: "open",
+    text: projects.length ? `I cannot find “${name.trim()}”. The projects here are ${projects.map((p) => p.title).join(", ")}.` : `I cannot find “${name.trim()}”, and there is no project here yet: a folder with a _Project.md note.`,
+    cites: projects.map((p) => ({ label: p.title, path: p.notePath })),
+  };
+}
 
 async function lastSeen(core: Core, name: string): Promise<Answer> {
   const doc = await findNote(core, name);
@@ -275,12 +326,9 @@ function unknown(name: string): Answer {
 
 // ---- helpers ----
 
+/** The active note's project, else the whole vault. Nib never silently picks a project. */
 async function scopeRoot(core: Core): Promise<string> {
-  const active = core.host.activeFile();
-  const project = active ? await core.projects.projectOf(active) : null;
-  if (project) return project.root;
-  const roots = await core.projects.roots();
-  return roots[0]?.root ?? "";
+  return (await scopeOf(core)).root;
 }
 
 /** A note by title, alias, or file name, case-insensitively; exact matches first, then a contains match. */

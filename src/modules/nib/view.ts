@@ -6,7 +6,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import { ask, perform, type Answer } from "./answers.js";
+import { ask, perform, projectsToOpen, scopeOf, type Answer } from "./answers.js";
 import { nudgesFor, type Nudge } from "./nudges.js";
 
 export const NIB_VIEW_TYPE = "longhand-nib";
@@ -81,7 +81,11 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   head.className = "lh-nib-head";
   head.innerHTML = `<span class="lh-nib-mark">${NIB_MARK}</span>`;
   const title = document.createElement("div");
-  title.innerHTML = `<div class="lh-nib-title">Nib</div><div class="lh-nib-sub">Answers from your files. Off the network.</div>`;
+  title.innerHTML = `<div class="lh-nib-title">Nib</div>`;
+  const sub = document.createElement("div");
+  sub.className = "lh-nib-sub";
+  sub.textContent = "Answers from your files. Off the network.";
+  title.appendChild(sub);
   head.appendChild(title);
 
   const transcript = document.createElement("div");
@@ -240,17 +244,27 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   };
 
   const greet = async () => {
-    if (history.length || !contextPath) return;
-    const doc = await core.projects.byPath(contextPath);
-    if (!doc) return;
+    const scope = await scopeOf(core, contextPath || core.host.activeFile());
+    sub.textContent =
+      scope.kind === "project" ? `Looking at ${scope.title}. Off the network.` : scope.kind === "vault" ? "Looking across the whole vault. Off the network." : "Nothing is open. Off the network.";
+    if (history.length) return;
     const card = document.createElement("div");
     card.className = "lh-nib-answer";
     const p = document.createElement("p");
-    const title = doc.title ?? contextPath;
-    p.textContent =
-      doc.type === "map"
-        ? `You are on ${title}. Ask what is set at a place, who has been where, or which pins have no scene yet.`
-        : `You are in ${title}. Ask who is in it, how long it is, or where something was last seen.`;
+    const doc = contextPath ? await core.projects.byPath(contextPath) : null;
+    const title = doc?.title ?? contextPath;
+    if (scope.kind === "none") {
+      const projects = await projectsToOpen(core);
+      p.textContent = projects.length
+        ? `Nothing is open. Which would you like: ${projects.map((x) => x.title).join(", ")}?`
+        : "Nothing is open, and there is no project here yet. New… on the ribbon makes a scene, a map, or a character to start with.";
+    } else if (doc?.type === "map") {
+      p.textContent = `You are on ${title}. Ask what is set at a place, who has been where, or which pins have no scene yet.`;
+    } else if (doc) {
+      p.textContent = `You are in ${title}${scope.kind === "vault" ? ", outside any project, so I will look across the whole vault" : ""}. Ask who is in it, how long it is, or where something was last seen.`;
+    } else {
+      p.textContent = `Looking at ${scope.title}. Ask where someone was last seen, what is set at a place, or how long the manuscript is.`;
+    }
     card.appendChild(p);
     transcript.appendChild(card);
   };
@@ -302,8 +316,9 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
 /** A few questions that fit what is on screen, so the first click shows what Nib can do. */
 export async function suggest(core: Core, contextPath = ""): Promise<string[]> {
   const anchor = contextPath || core.host.activeFile();
-  const project = anchor ? await core.projects.projectOf(anchor) : (await core.projects.roots())[0] ?? null;
-  const docs = await core.projects.documents(project ? project.root : "");
+  const scope = await scopeOf(core, anchor);
+  if (scope.kind === "none") return (await projectsToOpen(core)).slice(0, 6).map((p) => `Open ${p.title}`);
+  const docs = await core.projects.documents(scope.root);
   const out: string[] = [];
   const context = contextPath ? await core.projects.byPath(contextPath) : null;
   if (context?.type === "map") {
@@ -392,6 +407,8 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
   bubbleText.className = "lh-nib-bubble-text";
   const bubbleCites = document.createElement("ul");
   bubbleCites.className = "lh-nib-cites";
+  const openChips = document.createElement("div");
+  openChips.className = "lh-nib-bubble-actions";
   const actions = document.createElement("div");
   actions.className = "lh-nib-bubble-actions";
   const askBtn = document.createElement("button");
@@ -412,7 +429,7 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
   send.type = "submit";
   send.textContent = "Ask";
   form.append(input, send);
-  bubble.append(bubbleText, bubbleCites, actions, form);
+  bubble.append(bubbleText, bubbleCites, openChips, actions, form);
   dock.append(bubble, button);
   el.appendChild(dock);
 
@@ -472,11 +489,26 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
   const look = async () => {
     const doc = contextPath ? await core.projects.byPath(contextPath) : null;
     const title = doc?.title ?? contextPath;
-    greeting = !doc
-      ? "Ask me where someone was last seen, what is set at a place, or how long the manuscript is."
-      : doc.type === "map"
-        ? `You are on ${title}. Ask me what is set at a place, or who has been where.`
-        : `You are in ${title}. Ask me who is in it, or where someone was last seen.`;
+    const scope = await scopeOf(core, contextPath || null);
+    openChips.replaceChildren();
+    if (scope.kind === "none") {
+      const projects = await projectsToOpen(core);
+      greeting = projects.length ? "Nothing is open. Which would you like?" : "Nothing is open, and there is no project here yet.";
+      for (const p of projects.slice(0, 6)) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "lh-nib-chip";
+        b.textContent = `Open ${p.title}`;
+        b.addEventListener("click", () => void core.host.openNote(p.notePath));
+        openChips.appendChild(b);
+      }
+    } else {
+      greeting = !doc
+        ? `Looking at ${scope.title}. Ask me where someone was last seen, what is set at a place, or how long the manuscript is.`
+        : doc.type === "map"
+          ? `You are on ${title}. Ask me what is set at a place, or who has been where.`
+          : `You are in ${title}${scope.kind === "vault" ? ", outside any project; I will look across the whole vault" : ""}. Ask me who is in it, or where someone was last seen.`;
+    }
     let nudges: Nudge[] = [];
     try {
       nudges = await nudgesFor(core, contextPath);

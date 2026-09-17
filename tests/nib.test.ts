@@ -5,13 +5,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createCore } from "../src/core/modules.js";
 import { MemoryHost } from "../src/host/memory.js";
-import { ask, findNote, perform, resetJoke, words } from "../src/modules/nib/answers.js";
+import { ask, findNote, perform, resetJoke, scopeOf, words } from "../src/modules/nib/answers.js";
 import { nibModule } from "../src/modules/nib/index.js";
 import { askInSidebar, clearHistory, suggest } from "../src/modules/nib/view.js";
 
 function vault(): MemoryHost {
   return new MemoryHost({
-    "Novel/_Project.md": "---\nlonghand: 1\n---\n",
+    "Novel/_Project.md": '---\nlonghand: 1\ntitle: "Harrowmere"\n---\n',
     "Novel/Manuscript/01 Part One/01 The Letter.md":
       '---\nid: "C1"\ntype: "text"\ntitle: "The Letter"\n---\nMara found the letter. She read it twice at [[Stillwater]].\n',
     "Novel/Manuscript/01 Part One/02 The Tin.md": '---\nid: "C2"\ntype: "text"\ntitle: "The Tin"\n---\nShe paid for the crossing. [[Tom]] said nothing.\n',
@@ -114,6 +114,24 @@ test("a question from the corner opens the sidebar with the context, carrying wh
   const core = createCore(host);
   await askInSidebar(core, "Which places have no scene?", "Novel/Maps/Harrowmere.md", "Harrow Wood is on this map but no scene is set there yet.");
   assert.deepEqual(host.openedViews, [{ type: "longhand-nib", state: { path: "Novel/Maps/Harrowmere.md" } }]);
+});
+
+test("scope follows the active note: a project, the whole vault, or nothing open", async () => {
+  const host = vault();
+  host.files.set("Loose.md", '---\nid: "L"\ntype: "text"\ntitle: "Loose"\n---\nA note outside any project mentions Mara.\n');
+  const core = createCore(host);
+  host.active = "Novel/Manuscript/02 The Tin.md";
+  assert.equal((await scopeOf(core)).title, "Harrowmere");
+  host.active = "Loose.md";
+  assert.equal((await scopeOf(core)).kind, "vault");
+  host.active = null;
+  assert.equal((await scopeOf(core)).kind, "none");
+  assert.deepEqual(await suggest(core, ""), ["Open Harrowmere"]);
+  const opened = await ask(core, "Open Harrowmere");
+  assert.equal(opened.kind, "open");
+  assert.deepEqual(host.opened, ["Novel/_Project.md"]);
+  const missing = await ask(core, "open Nowhere");
+  assert.match(missing.text, /The projects here are Harrowmere/);
 });
 
 test("suggestions follow the context: a map asks about its places, a scene about itself", async () => {
