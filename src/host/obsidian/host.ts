@@ -211,8 +211,18 @@ export class ObsidianHost implements Host {
     if (this.overlays.has(overlay.id)) return;
     const el = document.createElement("div");
     el.className = "lh-overlay";
-    document.body.appendChild(el);
-    this.overlays.set(overlay.id, { el, handle: overlay.mount(el) });
+    // reserve the slot now; mount once the workspace and the vault index are ready
+    this.overlays.set(overlay.id, { el, handle: { destroy() {} } });
+    this.app.workspace.onLayoutReady(() => {
+      const slot = this.overlays.get(overlay.id);
+      if (!slot || slot.el !== el) return; // unregistered before layout was ready
+      document.body.appendChild(el);
+      try {
+        slot.handle = overlay.mount(el);
+      } catch (err) {
+        console.error("[longhand] overlay", overlay.id, err);
+      }
+    });
   }
 
   unregisterOverlay(id: string): void {

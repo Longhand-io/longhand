@@ -85,12 +85,18 @@ export class Projects {
   private async ensureIndex(): Promise<Map<string, Document>> {
     if (this.index) return this.index;
     const index = new Map<string, Document>();
-    for (const path of this.host.listFiles()) {
+    const files = this.host.listFiles();
+    for (const path of files) {
       if (!path.toLowerCase().endsWith(".md")) continue;
-      const text = await this.host.readFile(path);
-      index.set(path, this.spec.fromText(path, text));
+      try {
+        const text = await this.host.readFile(path);
+        index.set(path, this.spec.fromText(path, text));
+      } catch {
+        // a file that vanished between listing and reading; skip it
+      }
     }
-    this.index = index;
+    // a host that has not finished loading reports no files; do not remember that
+    if (files.length > 0) this.index = index;
     return index;
   }
 }
