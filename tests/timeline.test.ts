@@ -114,3 +114,43 @@ test("module registers a project-level view, a command, a ribbon, and a project-
   assert.equal(menu.check("Novel/_Project.md"), true);
   assert.equal(menu.check("Novel/Manuscript/01 The Letter.md"), false);
 });
+
+test("a custom calendar: its own months, year length, and era, read and written at the note's precision", async () => {
+  const host = new MemoryHost({
+    "Saga/_Project.md": '---\nlonghand: 1\ntitle: "Saga"\ncalendar:\n  kind: "custom"\n  months: ["Thaw", "Sowing", "Harvest", "Frost"]\n  days_per_month: 40\n  era: "AE"\n---\n',
+    "Saga/Manuscript/01 Ice.md": '---\nid: "A1"\ntype: "text"\ntitle: "Ice"\ndate: "412-Thaw-3"\n---\n',
+    "Saga/Manuscript/02 Seed.md": '---\nid: "A2"\ntype: "text"\ntitle: "Seed"\ndate: "412-2"\n---\n',
+    "Saga/Manuscript/03 Cold.md": '---\nid: "A3"\ntype: "text"\ntitle: "Cold"\ndate: "413"\n---\n',
+    "Saga/Manuscript/04 Bad.md": '---\nid: "A4"\ntype: "text"\ntitle: "Bad"\ndate: "412-Summer-1"\n---\n',
+  });
+  const core = createCore(host);
+  const m = new TimelineModel(core, "Saga/_Project.md");
+  const tl = await m.load();
+  assert.equal(tl.calendar.kind, "custom");
+  const [ice, seed, cold] = tl.lanes[0]!.items;
+  assert.equal(m.labelFor(ice!.start), "3 Thaw 412 AE");
+  assert.equal(m.labelFor(seed!.start), "Sowing 412 AE");
+  assert.equal(m.labelFor(cold!.start), "413 AE");
+  assert.equal(seed!.start.days - ice!.start.days, 40 - 2);
+  assert.equal(cold!.start.days - ice!.start.days, 160 - 2);
+  assert.deepEqual(tl.undated.map((d) => d.title), ["Bad"], "a month that is not in the calendar does not parse");
+  const written = await m.setDate("Saga/Manuscript/02 Seed.md", seed!.start.days + 45, "month");
+  assert.equal(written, "412-Harvest");
+  assert.ok(tl.calendar.ticks(ice!.start.days, cold!.start.days).some((t) => t.label === "Sowing 412"));
+});
+
+test("a counting calendar: Day 12, plain numbers, and ticks in units", async () => {
+  const host = new MemoryHost({
+    "Voyage/_Project.md": '---\nlonghand: 1\ncalendar:\n  kind: "count"\n  unit: "Day"\n---\n',
+    "Voyage/Manuscript/01 Cast off.md": '---\nid: "V1"\ntype: "text"\ntitle: "Cast off"\ndate: "Day 1"\n---\n',
+    "Voyage/Manuscript/02 Storm.md": '---\nid: "V2"\ntype: "text"\ntitle: "Storm"\ndate: 40\n---\n',
+  });
+  const core = createCore(host);
+  const m = new TimelineModel(core, "Voyage/_Project.md");
+  const tl = await m.load();
+  assert.equal(tl.calendar.kind, "count");
+  assert.deepEqual(tl.lanes[0]!.items.map((i) => m.labelFor(i.start)), ["Day 1", "Day 40"]);
+  assert.equal(await m.setDate("Voyage/Manuscript/02 Storm.md", 52), "Day 52");
+  assert.ok(tl.calendar.ticks(0, 60).every((t) => /^Day \d+$/.test(t.label)));
+  assert.equal(tl.calendar.parse("Week 3"), null);
+});

@@ -184,6 +184,24 @@ keywords: [winter, spring]
 
 Any folder that contains a `_Project.md` is a project root. Nested projects are not supported.
 
+### The project's calendar
+
+Story time is whatever the book says it is. The project note may carry a `calendar` block that says how to read every `date` and `date_end` in the project. Without one, dates are real dates: a year, a year and month, or a full date, in any era.
+
+```yaml
+calendar:
+  kind: custom                   # gregorian (default) | custom | count
+  months: [Thaw, Sowing, Haymaking, Harvest, Frost]   # custom: the writer's months, in order
+  days_per_month: 40             # custom: one number, or one per month
+  era: "AE"                      # custom: shown after the year
+```
+
+- `gregorian`: `1897`, `1897-04`, `1897-04-12`. Negative years are before year zero.
+- `custom`: `412`, `412-Sowing`, `412-Sowing-15`; a month may be given by name or number. Years are as long as the months add up to; there are no leap years unless the writer makes a longer month.
+- `count`: a unit and a number, `Day 12` or just `12`, with `unit` naming the unit (default `Day`). No months.
+
+Readers lay every kind on one axis and write dates back at the precision the note used. The `created` and `modified` fields are always real dates; they are when the writing happened, not when the story did.
+
 ## Snapshot files
 
 The default history store. One full copy of the document per snapshot:

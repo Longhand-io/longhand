@@ -8,7 +8,7 @@
 import * as fm from "../../core/frontmatter.js";
 import type { Core } from "../../core/modules.js";
 import type { Document } from "../../core/spec.js";
-import { formatStoryDate, labelStoryDate, parseStoryDate, type Precision, type StoryDate } from "../../core/storydate.js";
+import { calendarFor, gregorian, type Calendar, type Precision, type StoryDate } from "../../core/calendar.js";
 import { baseName } from "../../core/wikilink.js";
 
 export interface Item {
@@ -47,6 +47,7 @@ export interface SceneRef {
 export interface Timeline {
   root: string;
   projectTitle: string;
+  calendar: Calendar;
   /** every scene in binder order, for the manuscript-order axis */
   scenes: SceneRef[];
   lanes: Lane[];
@@ -58,6 +59,8 @@ export interface Timeline {
 }
 
 export class TimelineModel {
+  calendar: Calendar = gregorian();
+
   constructor(
     private readonly core: Core,
     readonly anchorPath: string,
@@ -67,6 +70,10 @@ export class TimelineModel {
     const project = await this.core.projects.projectOf(this.anchorPath);
     const root = project ? project.root : "";
     const projectNote = project ? await this.core.spec.read(project.notePath) : null;
+    const projectFields: { [k: string]: import("../../core/frontmatter.js").Value | undefined } = {};
+    if (projectNote) for (const e of projectNote.fields.entries) if (e.key) projectFields[e.key] = fm.get(projectNote.fields, e.key);
+    this.calendar = calendarFor(projectFields);
+    const parseStoryDate = (v: unknown) => this.calendar.parse(v);
     const labelsRaw = projectNote ? fm.get(projectNote.fields, "labels") : undefined;
     const labels = Array.isArray(labelsRaw) ? labelsRaw.filter((l): l is string => typeof l === "string") : [];
     const docs = await this.core.projects.documents(root);
@@ -108,8 +115,9 @@ export class TimelineModel {
         synopsis: typeof synopsis === "string" && synopsis !== "" ? synopsis : null,
       });
       if (isScene) {
+        // writing time is always real time, whatever the story's calendar
         const created = fm.get(doc.fields, "created");
-        const c = typeof created === "string" ? parseStoryDate(created.slice(0, 10)) : null;
+        const c = typeof created === "string" ? gregorian().parse(created.slice(0, 10)) : null;
         if (c) written.push({ doc, title, days: c.days });
       }
     }
@@ -141,6 +149,7 @@ export class TimelineModel {
     return {
       root,
       projectTitle: (projectNote?.title ?? (root || "Vault")).toString(),
+      calendar: this.calendar,
       scenes,
       lanes,
       written,
@@ -153,12 +162,12 @@ export class TimelineModel {
 
   /** Write one date at the precision the note already uses; a new date gets day precision. */
   async setDate(path: string, days: number, precision: Precision = "day"): Promise<string> {
-    const value = formatStoryDate(Math.round(days), precision);
+    const value = this.calendar.format(Math.round(days), precision);
     await this.core.spec.setField(path, "date", value);
     return value;
   }
 
   labelFor(d: StoryDate): string {
-    return labelStoryDate(d);
+    return this.calendar.label(d);
   }
 }

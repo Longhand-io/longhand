@@ -7,7 +7,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import { fromDays, parseStoryDate, ticks } from "../../core/storydate.js";
+import { fromDays } from "../../core/storydate.js";
 import { TimelineModel, type Item, type SceneRef, type Timeline } from "./model.js";
 
 const DRAG_THRESHOLD = 4;
@@ -79,7 +79,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     for (const [id, b] of axisButtons) b.classList.toggle("lh-map-tool-active", id === axis);
     hint.textContent =
       axis === "story"
-        ? "Story date. Click a pin to open its scene, drag it to change the date. Events are dashed."
+        ? `Story date${tl.calendar.kind === "gregorian" ? "" : tl.calendar.kind === "custom" ? ", this project's own calendar" : ", counted"}. Click a pin to open its scene, drag it to change the date. Events are dashed.`
         : "Manuscript order. Every scene in binder order, in its thread. Click a pin to open it; switch to story date to place scenes in time.";
 
     if (axis === "manuscript") {
@@ -90,7 +90,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     // ruler
     const ruler = document.createElement("div");
     ruler.className = "lh-tl-ruler";
-    for (const t of ticks(tl.min, tl.max)) {
+    for (const t of tl.calendar.ticks(tl.min, tl.max)) {
       const tick = document.createElement("span");
       tick.className = "lh-tl-tick" + (t.major ? " lh-tl-tick-major" : "");
       tick.style.left = `${fraction(t.days) * 100}%`;
@@ -158,11 +158,11 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
         chip.textContent = d.title ?? d.path;
         chip.title = "Give this scene a story date";
         chip.addEventListener("click", async () => {
-          const v = await core.host.prompt(`Story date for ${d.title ?? d.path} (1897, 1897-04, or 1897-04-12)`, "");
+          const v = await core.host.prompt(`Story date for ${d.title ?? d.path}: ${tl.calendar.hint}`, "");
           if (!v) return;
-          const parsed = parseStoryDate(v);
+          const parsed = tl.calendar.parse(v);
           if (!parsed) {
-            core.host.notify(`${v} is not a date I can place. Use a year, a year and month, or a full date.`);
+            core.host.notify(`${v} is not a date I can place. Use ${tl.calendar.hint}.`);
             return;
           }
           await write(() => model.setDate(d.path, parsed.days, parsed.precision));
