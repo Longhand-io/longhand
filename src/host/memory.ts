@@ -5,7 +5,7 @@
 
 import { parse, get } from "../core/frontmatter.js";
 import { linkTarget } from "../core/wikilink.js";
-import type { Choice, Command, Companion, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewState } from "./host.js";
+import type { Choice, Command, Companion, FileChange, FileMenuItem, Host, Overlay, PickKind, ViewFactory, ViewState } from "./host.js";
 
 export class MemoryHost implements Host {
   readonly isMobile = false;
@@ -17,6 +17,8 @@ export class MemoryHost implements Host {
   commands = new Map<string, Command>();
   autoViews: { type: string; when: (path: string) => boolean }[] = [];
   companions: Companion[] = [];
+  overlays: Overlay[] = [];
+  private activeListeners = new Set<(p: string | null) => void>();
   fileMenu: FileMenuItem[] = [];
   ribbon: { icon: string; title: string; run: () => void | Promise<void> }[] = [];
   openedAsMarkdown: string[] = [];
@@ -94,6 +96,25 @@ export class MemoryHost implements Host {
 
   activeFile(): string | null {
     return this.active;
+  }
+
+  /** Test helper: change the active note and tell listeners. */
+  setActive(path: string | null): void {
+    this.active = path;
+    for (const l of this.activeListeners) l(path);
+  }
+
+  onActiveFileChanged(cb: (path: string | null) => void): () => void {
+    this.activeListeners.add(cb);
+    return () => this.activeListeners.delete(cb);
+  }
+
+  registerOverlay(overlay: Overlay): void {
+    this.overlays.push(overlay);
+  }
+
+  unregisterOverlay(id: string): void {
+    this.overlays = this.overlays.filter((o) => o.id !== id);
   }
 
   async openNote(path: string): Promise<void> {

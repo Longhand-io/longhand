@@ -1160,3 +1160,15 @@
   color: var(--lh-graphite);
   margin-right: 0.3rem;
 }
+
+/* Nib over the whole window, above the status bar, out of the sidebars' way */
+.lh-nib-dock-global {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 2.6rem;
+  z-index: 60;
+}
+
+.lh-nib-dock-global .lh-nib-bubble {
+  width: 21rem;
+}

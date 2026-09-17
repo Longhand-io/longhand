@@ -339,9 +339,10 @@ export async function suggest(core: Core, contextPath = ""): Promise<string[]> {
  * view on screen it shows a badge and, on hover or click, a speech bubble with the observation,
  * a follow-up, and a question box. Asking hands the conversation to the sidebar; the nib stays.
  */
-export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): ViewHandle {
+export function mountNibDock(core: Core, el: HTMLElement, initialContext: string, follow = false): ViewHandle {
+  let contextPath = initialContext;
   const dock = document.createElement("div");
-  dock.className = "lh-root lh-nib-dock";
+  dock.className = "lh-root lh-nib-dock" + (follow ? " lh-nib-dock-global" : "");
   const button = document.createElement("button");
   button.type = "button";
   button.className = "lh-nib-dock-button lh-nc lh-nc-idle";
@@ -374,8 +375,9 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
   const onLeave = () => {
     for (const p of pupils) p.style.transform = "";
   };
-  el.addEventListener("pointermove", onMove);
-  el.addEventListener("pointerleave", onLeave);
+  const eyeSurface: EventTarget = follow ? document : el;
+  eyeSurface.addEventListener("pointermove", onMove as EventListener);
+  eyeSurface.addEventListener("pointerleave", onLeave);
   const onEvent = (e: NibEvent) => {
     if (e === "asking") setState("thinking");
     else if (e === "joke") setState("joke", 1400);
@@ -468,9 +470,13 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
   };
 
   const look = async () => {
-    const doc = await core.projects.byPath(contextPath);
+    const doc = contextPath ? await core.projects.byPath(contextPath) : null;
     const title = doc?.title ?? contextPath;
-    greeting = doc?.type === "map" ? `You are on ${title}. Ask me what is set at a place, or who has been where.` : `You are in ${title}. Ask me who is in it, or where someone was last seen.`;
+    greeting = !doc
+      ? "Ask me where someone was last seen, what is set at a place, or how long the manuscript is."
+      : doc.type === "map"
+        ? `You are on ${title}. Ask me what is set at a place, or who has been where.`
+        : `You are in ${title}. Ask me who is in it, or where someone was last seen.`;
     let nudges: Nudge[] = [];
     try {
       nudges = await nudgesFor(core, contextPath);
@@ -536,14 +542,23 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
   });
 
   const unsubscribe = core.host.onFileChanged(() => void look());
+  const unfollow = follow
+    ? core.host.onActiveFileChanged((path) => {
+        if ((path ?? "") === contextPath) return;
+        contextPath = path ?? "";
+        bubble.hidden = true;
+        void look();
+      })
+    : () => {};
   void look();
 
   return {
     destroy() {
       unsubscribe();
+      unfollow();
       eventListeners.delete(onEvent);
-      el.removeEventListener("pointermove", onMove);
-      el.removeEventListener("pointerleave", onLeave);
+      eyeSurface.removeEventListener("pointermove", onMove as EventListener);
+      eyeSurface.removeEventListener("pointerleave", onLeave);
       if (hideTimer) clearTimeout(hideTimer);
       if (popTimer) clearTimeout(popTimer);
       if (stateTimer) clearTimeout(stateTimer);

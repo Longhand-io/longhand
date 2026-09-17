@@ -102,9 +102,10 @@ test("module is off by default and registers a right-hand view and the Ask Nib c
   await nibModule.register(core);
   assert.equal(host.views.get("longhand-nib")?.placement, "right");
   assert.ok(host.commands.has("nib-ask"));
-  assert.equal(host.companions.length, 1);
+  assert.equal(host.overlays.length, 1);
+  assert.equal(host.overlays[0]?.id, "nib");
   await nibModule.unregister?.();
-  assert.equal(host.companions.length, 0);
+  assert.equal(host.overlays.length, 0);
 });
 
 test("a question from the corner opens the sidebar with the context, carrying what Nib said", async () => {

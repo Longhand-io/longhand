@@ -18,7 +18,7 @@ import {
 } from "obsidian";
 import type { App } from "obsidian";
 import { IMAGE_EXTENSIONS } from "../../modules/map/model.js";
-import type { Choice, Command, Companion, FileChange, FileMenuItem, Host, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
+import type { Choice, Command, Companion, FileChange, FileMenuItem, Host, Overlay, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
 
 export class ObsidianHost implements Host {
   readonly isMobile: boolean = Platform.isMobile;
@@ -26,6 +26,8 @@ export class ObsidianHost implements Host {
   private listeners = new Set<(c: FileChange) => void>();
   private factories = new Map<string, ViewFactory>();
   readonly companions: Companion[] = [];
+  private overlays = new Map<string, { el: HTMLElement; handle: ViewHandle }>();
+  private activeListeners = new Set<(p: string | null) => void>();
   private autoViews: { type: string; when: (path: string) => boolean }[] = [];
   /** paths to open as plain Markdown once, skipping the auto view */
   private bypass = new Set<string>();
@@ -40,6 +42,19 @@ export class ObsidianHost implements Host {
     plugin.registerEvent(this.app.vault.on("delete", (f) => emit({ kind: "delete", path: f.path })));
     plugin.registerEvent(this.app.vault.on("rename", (f, old) => emit({ kind: "rename", path: f.path, oldPath: old })));
     plugin.registerEvent(this.app.workspace.on("file-open", (file) => void this.maybeSwap(file)));
+    const active = () => {
+      const path = this.activeFile();
+      for (const l of this.activeListeners) l(path);
+    };
+    plugin.registerEvent(this.app.workspace.on("file-open", active));
+    plugin.registerEvent(this.app.workspace.on("active-leaf-change", active));
+    plugin.register(() => {
+      for (const o of this.overlays.values()) {
+        o.handle.destroy();
+        o.el.remove();
+      }
+      this.overlays.clear();
+    });
     plugin.registerEvent(
       this.app.workspace.on("active-leaf-change", (leaf) => {
         const v = leaf?.view;
@@ -185,6 +200,27 @@ export class ObsidianHost implements Host {
 
   registerAutoView(type: string, when: (path: string) => boolean): void {
     this.autoViews.push({ type, when });
+  }
+
+  onActiveFileChanged(cb: (path: string | null) => void): () => void {
+    this.activeListeners.add(cb);
+    return () => this.activeListeners.delete(cb);
+  }
+
+  registerOverlay(overlay: Overlay): void {
+    if (this.overlays.has(overlay.id)) return;
+    const el = document.createElement("div");
+    el.className = "lh-overlay";
+    document.body.appendChild(el);
+    this.overlays.set(overlay.id, { el, handle: overlay.mount(el) });
+  }
+
+  unregisterOverlay(id: string): void {
+    const o = this.overlays.get(id);
+    if (!o) return;
+    o.handle.destroy();
+    o.el.remove();
+    this.overlays.delete(id);
   }
 
   registerCompanion(companion: Companion): void {

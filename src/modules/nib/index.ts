@@ -28,12 +28,12 @@ export const nibModule: Module = {
     });
     host.registerCommand({ id: "nib-ask", name: "Ask Nib", run: () => host.openView(NIB_VIEW, { path: "" }) });
     host.registerRibbon("pen-tool", "Ask Nib", () => host.openView(NIB_VIEW, { path: "" }));
-    // the corner nib on every Longhand view, the way a studio assistant sits in the margin
-    host.registerCompanion({ id: "nib", mount: (el, state) => mountNibDock(core, el, state.path) });
+    // the character in the corner of the window, following whatever note is active
+    host.registerOverlay({ id: "nib", mount: (el) => mountNibDock(core, el, host.activeFile() ?? "", true) });
   },
 
   unregister() {
     // the host keeps the view and command registered; the corner nib goes away
-    registeredHost?.unregisterCompanion("nib");
+    registeredHost?.unregisterOverlay("nib");
   },
 };
