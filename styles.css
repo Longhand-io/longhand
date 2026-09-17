@@ -767,8 +767,8 @@
 }
 
 .lh-root button.lh-nib-dock-button {
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 3.8rem;
+  height: 3.8rem;
   padding: 0.45rem;
   border: 1px solid var(--lh-rule);
   border-radius: 50%;
@@ -781,13 +781,6 @@
 .lh-root button.lh-nib-dock-button svg {
   width: 100%;
   height: 100%;
-  color: var(--lh-paper);
-}
-
-.lh-root button.lh-nib-dock-button svg circle,
-.lh-root button.lh-nib-dock-button svg line {
-  stroke: var(--lh-ink);
-  fill: var(--lh-ink);
 }
 
 .lh-root button.lh-nib-dock-button:hover,
@@ -855,42 +848,63 @@
   padding: 0;
 }
 
-.lh-nib-badge {
-  position: absolute;
-  top: -0.15rem;
-  right: -0.15rem;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  background: var(--lh-color-yellow);
-  border: 2px solid var(--lh-paper);
-}
+/* ---- the character. At rest it is the mark; when it has something it pops up and the eyes open. ---- */
 
-.lh-nib-badge[hidden] {
-  display: none;
-}
+.lh-nc svg { overflow: visible; }
+.lh-nc .lh-nc-body { fill: var(--lh-paper); transform-origin: 39px 76px; transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.lh-nc .lh-nc-slit { stroke: var(--lh-ink); stroke-width: 3; }
+.lh-nc .lh-nc-hole { fill: var(--lh-ink); }
+.lh-nc .lh-nc-line { stroke: var(--lh-paper); stroke-width: 9; stroke-linecap: round; }
+.lh-nc .lh-nc-eye { fill: #fbfbf9; transform-origin: center; transform-box: fill-box; }
+.lh-nc .lh-nc-pupil { fill: #1e2432; transition: transform 0.12s; }
+.lh-nc .lh-nc-lid { fill: var(--lh-paper); transform-origin: center; transform-box: fill-box; transform: scaleY(0); }
+.lh-nc .lh-nc-brow { stroke: var(--lh-ink); stroke-width: 2.5; stroke-linecap: round; fill: none; opacity: 0; }
+.lh-nc .lh-nc-badge { fill: var(--lh-color-yellow); stroke: var(--lh-ink); stroke-width: 2; opacity: 0; }
+.lh-nc .lh-nc-scribble { stroke: var(--lh-paper); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-dasharray: 90; stroke-dashoffset: 90; opacity: 0; }
+.lh-nc .lh-nc-halo { fill: none; stroke: var(--lh-color-yellow); stroke-width: 2; opacity: 0; }
+.lh-nc .lh-nc-character { transform-origin: 50% 80%; }
+.lh-nc .lh-nc-head { transform-origin: 39px 44px; }
+.lh-nc .lh-nc-eyes { opacity: 0; transform: scale(0.6); transform-origin: 39px 27px; transition: opacity 0.25s, transform 0.25s; }
 
-/* the character idles: the ink dot blinks now and then; with something to say it nods */
-@keyframes lh-nib-blink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  95% { transform: scaleY(0.15); }
-}
+.lh-nc:not(.lh-nc-idle) .lh-nc-eyes { opacity: 1; transform: scale(1); animation: lh-nc-popin 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.lh-nc:not(.lh-nc-idle) .lh-nc-head { animation: lh-nc-popup 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.lh-nc-idle .lh-nc-character { animation: lh-nc-breathe 4s ease-in-out infinite; }
+.lh-nc-noticed .lh-nc-badge { opacity: 1; animation: lh-nc-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.lh-nc-noticed .lh-nc-character { animation: lh-nc-nod 2.4s ease-in-out 0.5s infinite; }
+.lh-nc-noticed .lh-nc-brow { opacity: 1; transform: translateY(-2px); }
+.lh-nc-noticed .lh-nc-lid, .lh-nc-thinking .lh-nc-lid { animation: lh-nc-blink 5.5s ease-in-out infinite; }
+.lh-nc-thinking .lh-nc-pupil { animation: lh-nc-think 2.6s ease-in-out infinite; }
+.lh-nc-thinking .lh-nc-scribble { opacity: 1; animation: lh-nc-write 1.6s ease-in-out infinite; }
+.lh-nc-thinking .lh-nc-character { animation: lh-nc-tilt 2.6s ease-in-out infinite; }
+.lh-nc-found .lh-nc-character { animation: lh-nc-bounce 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) 1; }
+.lh-nc-found .lh-nc-halo { opacity: 1; animation: lh-nc-ring 1.2s ease-out 1 both; }
+.lh-nc-notnow .lh-nc-character { animation: lh-nc-shake 0.7s ease-in-out 0.3s 1; }
+.lh-nc-notnow .lh-nc-pupil { transform: translate(-4px, 1px) !important; transition: transform 0.4s 0.7s; }
+.lh-nc-doubletake .lh-nc-pupil { animation: lh-nc-dt 1.5s ease-in-out 1; }
+.lh-nc-doubletake .lh-nc-brow { animation: lh-nc-browup 1.5s ease-in-out 1; }
+.lh-nc-joke .lh-nc-character { animation: lh-nc-wiggle 1.2s ease-in-out 1; }
+.lh-nc-joke .lh-nc-eye { animation: lh-nc-wide 1.2s ease-in-out 1; }
 
-@keyframes lh-nib-nod {
-  0%, 100% { transform: rotate(0deg); }
-  20% { transform: rotate(-9deg); }
-  45% { transform: rotate(6deg); }
-  70% { transform: rotate(-3deg); }
-}
+@keyframes lh-nc-popin { 0% { opacity: 0; transform: scale(0.4); } 60% { opacity: 1; transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes lh-nc-popup { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1.08); } }
+@keyframes lh-nc-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+@keyframes lh-nc-pop { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes lh-nc-nod { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-9deg); } 45% { transform: rotate(6deg); } 70% { transform: rotate(-3deg); } }
+@keyframes lh-nc-blink { 0%, 93%, 100% { transform: scaleY(0); } 96% { transform: scaleY(1); } }
+@keyframes lh-nc-think { 0%, 100% { transform: translate(0, 0); } 30% { transform: translate(3px, -4px); } 60% { transform: translate(-3px, -4px); } }
+@keyframes lh-nc-write { 0% { stroke-dashoffset: 90; } 70% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
+@keyframes lh-nc-tilt { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(8deg); } }
+@keyframes lh-nc-bounce { 0% { transform: translateY(0) scale(1, 1); } 30% { transform: translateY(-14px) scale(0.95, 1.08); } 60% { transform: translateY(0) scale(1.05, 0.94); } 100% { transform: translateY(0) scale(1, 1); } }
+@keyframes lh-nc-ring { from { r: 20; opacity: 1; } to { r: 46; opacity: 0; } }
+@keyframes lh-nc-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
+@keyframes lh-nc-dt { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(5px, 0); } 40% { transform: translate(0, 0); } 60%, 90% { transform: translate(5px, -1px); } }
+@keyframes lh-nc-browup { 0%, 55%, 100% { opacity: 0; transform: translateY(0); } 65%, 90% { opacity: 1; transform: translateY(-3px); } }
+@keyframes lh-nc-wiggle { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(14deg); } 30% { transform: rotate(-12deg); } 45% { transform: rotate(9deg); } 60% { transform: rotate(-6deg); } 75% { transform: rotate(3deg); } }
+@keyframes lh-nc-wide { 0%, 100% { transform: scale(1); } 20%, 80% { transform: scale(1.35); } }
 
-.lh-nib-idle svg circle {
-  transform-origin: 39px 44px;
-  animation: lh-nib-blink 6s ease-in-out infinite;
-}
-
-.lh-nib-alert svg {
-  transform-origin: 50% 80%;
-  animation: lh-nib-nod 2.4s ease-in-out infinite;
+@media (prefers-reduced-motion: reduce) {
+  .lh-nc * { animation: none !important; transition: none !important; }
+  .lh-nc-noticed .lh-nc-badge, .lh-nc-thinking .lh-nc-scribble { opacity: 1; }
 }
 
 .lh-root .lh-nib-chips-toggle {

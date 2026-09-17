@@ -13,6 +13,8 @@ import { words, type Cite } from "./answers.js";
 export interface Nudge {
   /** stable per fact, so it is shown once per session */
   key: string;
+  /** broken is the surprising kind and gets the double take */
+  kind: "broken" | "sceneless" | "missing" | "empty";
   text: string;
   cites: Cite[];
   /** a question that follows from the nudge, offered as the bubble's action */
@@ -44,6 +46,7 @@ async function mapNudges(core: Core, path: string): Promise<Nudge[]> {
   if (broken.length) {
     out.push({
       key: `${path}:broken:${broken.join("|")}`,
+      kind: "broken",
       text: broken.length === 1 ? `A pin on this map points at a note that does not exist: ${broken[0]}.` : `${broken.length} pins on this map point at notes that do not exist: ${broken.join(", ")}.`,
       cites: [],
     });
@@ -59,6 +62,7 @@ async function mapNudges(core: Core, path: string): Promise<Nudge[]> {
     const first = sceneless[0]!;
     out.push({
       key: `${path}:sceneless:${sceneless.map((c) => c.path).join("|")}`,
+      kind: "sceneless",
       text:
         sceneless.length === 1
           ? `${first.label} is on this map but no scene is set there yet.`
@@ -80,6 +84,7 @@ async function mapNudges(core: Core, path: string): Promise<Nudge[]> {
     const first = missing[0]!;
     out.push({
       key: `${path}:missing:${missing.map((c) => c.path).join("|")}`,
+      kind: "missing",
       text:
         missing.length === 1
           ? `${first.label} has ${first.detail} and is not on this map.`
@@ -97,7 +102,7 @@ async function sceneNudges(core: Core, path: string): Promise<Nudge[]> {
   const out: Nudge[] = [];
   const text = await core.host.readFile(path);
   if (words(text) === 0) {
-    out.push({ key: `${path}:empty`, text: `${doc.title ?? baseName(path)} has no text yet.`, cites: [] });
+    out.push({ key: `${path}:empty`, kind: "empty", text: `${doc.title ?? baseName(path)} has no text yet.`, cites: [] });
   }
   return out;
 }

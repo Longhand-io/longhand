@@ -42,6 +42,36 @@ export function clearHistory(): void {
 const NIB_MARK =
   '<svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="28,10 50,10 50,60 39,76 28,60" fill="currentColor"/><circle cx="39" cy="44" r="3.5" fill="var(--lh-paper)"/><line x1="39" y1="47" x2="39" y2="62" stroke="var(--lh-paper)" stroke-width="3"/><path d="M28 86 H 86" stroke="currentColor" stroke-width="9" stroke-linecap="round"/></svg>';
 
+/** The mark grown into a character: eyes above the breather hole, a badge, a scribble, a halo. */
+const NIB_CHARACTER =
+  '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+  '<circle class="lh-nc-halo" cx="39" cy="45" r="20"/>' +
+  '<g class="lh-nc-character">' +
+  '<g class="lh-nc-head">' +
+  '<polygon class="lh-nc-body" points="28,10 50,10 50,60 39,76 28,60"/>' +
+  '<line class="lh-nc-slit" x1="39" y1="47" x2="39" y2="62"/>' +
+  '<circle class="lh-nc-hole" cx="39" cy="44" r="3.5"/>' +
+  '<g class="lh-nc-eyes">' +
+  '<ellipse class="lh-nc-eye" cx="33.5" cy="27" rx="4.2" ry="5"/><ellipse class="lh-nc-eye" cx="44.5" cy="27" rx="4.2" ry="5"/>' +
+  '<circle class="lh-nc-pupil" cx="33.5" cy="27.5" r="2"/><circle class="lh-nc-pupil" cx="44.5" cy="27.5" r="2"/>' +
+  '<rect class="lh-nc-lid" x="28.5" y="21" width="21" height="12"/>' +
+  '<path class="lh-nc-brow" d="M29 19 q4.5 -3 9 0"/><path class="lh-nc-brow" d="M40 19 q4.5 -3 9 0"/>' +
+  '</g>' +
+  '<circle class="lh-nc-badge" cx="52" cy="12" r="5"/>' +
+  '</g>' +
+  '<path class="lh-nc-line" d="M28 86 H 86"/>' +
+  '<path class="lh-nc-scribble" d="M30 86 q6 -8 12 0 t12 0 t12 0 t12 0"/>' +
+  '</g></svg>';
+
+export type NibState = "idle" | "noticed" | "thinking" | "found" | "notnow" | "doubletake" | "joke";
+
+/** What the sidebar tells the character: it is working, it has answered, it told the joke. */
+type NibEvent = "asking" | "answered" | "joke";
+const eventListeners = new Set<(e: NibEvent) => void>();
+function emit(e: NibEvent): void {
+  for (const l of eventListeners) l(e);
+}
+
 export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): ViewHandle {
   const root = document.createElement("div");
   root.className = "lh-root lh-nib";
@@ -116,6 +146,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
     transcript.appendChild(card);
     transcript.scrollTop = transcript.scrollHeight;
     let answer: Answer;
+    emit("asking");
     try {
       answer = await ask(core, q);
     } catch (err) {
@@ -123,6 +154,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
       answer = { kind: "help", text: "Something in the files would not read. The console has the detail.", cites: [] };
     }
     history.push({ you: q, answer });
+    emit(answer.text.includes("That was the one joke") ? "joke" : "answered");
     card.classList.remove("lh-nib-thinking");
     renderAnswer(card, answer);
     transcript.scrollTop = transcript.scrollHeight;
@@ -312,14 +344,44 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
   dock.className = "lh-root lh-nib-dock";
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "lh-nib-dock-button lh-nib-idle";
+  button.className = "lh-nib-dock-button lh-nc lh-nc-idle";
   button.title = "Nib";
   button.setAttribute("aria-label", "Nib");
-  button.innerHTML = NIB_MARK;
-  const badge = document.createElement("span");
-  badge.className = "lh-nib-badge";
-  badge.hidden = true;
-  button.appendChild(badge);
+  button.innerHTML = NIB_CHARACTER;
+
+  // ---- the character's states, each fired by something real ----
+  const STATES: NibState[] = ["idle", "noticed", "thinking", "found", "notnow", "doubletake", "joke"];
+  let stateTimer: ReturnType<typeof setTimeout> | null = null;
+  const restingState = (): NibState => (current ? "noticed" : "idle");
+  const setState = (s: NibState, thenRestAfterMs?: number) => {
+    if (stateTimer) clearTimeout(stateTimer);
+    stateTimer = null;
+    for (const x of STATES) button.classList.remove(`lh-nc-${x}`);
+    void button.offsetWidth; // restart one-shot animations
+    button.classList.add(`lh-nc-${s}`);
+    if (thenRestAfterMs) stateTimer = setTimeout(() => setState(restingState()), thenRestAfterMs);
+  };
+  const pupils = button.querySelectorAll<SVGElement>(".lh-nc-pupil");
+  const onMove = (ev: PointerEvent) => {
+    if (button.classList.contains("lh-nc-idle")) return;
+    const r = button.getBoundingClientRect();
+    const dx = ev.clientX - (r.left + r.width * 0.39);
+    const dy = ev.clientY - (r.top + r.height * 0.27);
+    const len = Math.hypot(dx, dy) || 1;
+    const reach = Math.min(1, len / 240) * 2.2;
+    for (const p of pupils) p.style.transform = `translate(${(dx / len) * reach}px, ${(dy / len) * reach}px)`;
+  };
+  const onLeave = () => {
+    for (const p of pupils) p.style.transform = "";
+  };
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener("pointerleave", onLeave);
+  const onEvent = (e: NibEvent) => {
+    if (e === "asking") setState("thinking");
+    else if (e === "joke") setState("joke", 1400);
+    else setState("found", 1100);
+  };
+  eventListeners.add(onEvent);
 
   const bubble = document.createElement("div");
   bubble.className = "lh-nib-bubble";
@@ -362,12 +424,11 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
     if (hideTimer) clearTimeout(hideTimer);
     hideTimer = null;
     bubble.hidden = false;
-    button.classList.remove("lh-nib-idle", "lh-nib-alert");
+    if (button.classList.contains("lh-nc-idle")) setState("noticed");
   };
   const hide = () => {
     bubble.hidden = true;
-    button.classList.add("lh-nib-idle");
-    if (current) button.classList.add("lh-nib-alert");
+    if (!stateTimer) setState(restingState());
   };
   const scheduleHide = () => {
     if (hideTimer) clearTimeout(hideTimer);
@@ -403,8 +464,7 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
       askBtn.hidden = true;
       dismissBtn.hidden = true;
     }
-    badge.hidden = !current;
-    button.classList.toggle("lh-nib-alert", !!current && bubble.hidden);
+    button.classList.toggle("lh-nc-has-nudge", !!current);
   };
 
   const look = async () => {
@@ -417,11 +477,15 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
     } catch (err) {
       console.error("[longhand] nib nudges", err);
     }
+    const before = current?.key ?? null;
     current = nudges.find((n) => !spoken.has(n.key)) ?? null;
     renderBubble();
+    if (!current && !stateTimer) setState("idle");
     // it speaks up on its own, once per fact, after a beat, and steps back if you ignore it
     if (current && current.key !== announced && bubble.hidden) {
       announced = current.key;
+      if (current.kind === "broken" && before !== current.key) setState("doubletake", 1600);
+      else setState("noticed");
       if (popTimer) clearTimeout(popTimer);
       popTimer = setTimeout(() => {
         if (!current || bubble.hidden === false) return;
@@ -456,8 +520,9 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
   dismissBtn.addEventListener("click", () => {
     if (current) spoken.add(current.key);
     current = null;
-    hide();
+    bubble.hidden = true;
     renderBubble();
+    setState("notnow", 1300);
   });
   form.addEventListener("submit", (ev) => {
     ev.preventDefault();
@@ -476,8 +541,12 @@ export function mountNibDock(core: Core, el: HTMLElement, contextPath: string): 
   return {
     destroy() {
       unsubscribe();
+      eventListeners.delete(onEvent);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerleave", onLeave);
       if (hideTimer) clearTimeout(hideTimer);
       if (popTimer) clearTimeout(popTimer);
+      if (stateTimer) clearTimeout(stateTimer);
       dock.remove();
     },
   };
