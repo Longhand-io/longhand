@@ -34,9 +34,21 @@ export interface Written {
   days: number;
 }
 
+/** A scene in binder order, dated or not, for the manuscript-order axis. */
+export interface SceneRef {
+  doc: Document;
+  title: string;
+  label: string | null;
+  synopsis: string | null;
+  /** 0 to 1 along the manuscript */
+  position: number;
+}
+
 export interface Timeline {
   root: string;
   projectTitle: string;
+  /** every scene in binder order, for the manuscript-order axis */
+  scenes: SceneRef[];
   lanes: Lane[];
   written: Written[];
   undated: Document[];
@@ -61,11 +73,23 @@ export class TimelineModel {
     const items: Item[] = [];
     const undated: Document[] = [];
     const written: Written[] = [];
+    const scenes: SceneRef[] = [];
     for (const doc of docs) {
       const isScene = doc.type === "text" || doc.type === null;
       const isEvent = doc.type === "event";
       if (!isScene && !isEvent) continue;
       const title = doc.title ?? baseName(doc.path).replace(/^\d+\s+/, "");
+      if (isScene) {
+        const label = fm.get(doc.fields, "label");
+        const synopsis = fm.get(doc.fields, "synopsis");
+        scenes.push({
+          doc,
+          title,
+          label: typeof label === "string" && label !== "" ? label : null,
+          synopsis: typeof synopsis === "string" && synopsis !== "" ? synopsis : null,
+          position: 0,
+        });
+      }
       const start = parseStoryDate(fm.get(doc.fields, "date"));
       if (!start) {
         if (isScene) undated.push(doc);
@@ -89,10 +113,14 @@ export class TimelineModel {
         if (c) written.push({ doc, title, days: c.days });
       }
     }
+    scenes.forEach((s, i) => {
+      s.position = scenes.length > 1 ? i / (scenes.length - 1) : 0.5;
+    });
     // threads: one lane per label in the project's order, then any label the project note
     // does not list, then the unlabelled, then events
     const order = [...labels];
     for (const it of items) if (it.label && !order.includes(it.label)) order.push(it.label);
+    for (const s of scenes) if (s.label && !order.includes(s.label)) order.push(s.label);
     const lanes: Lane[] = [];
     for (const [i, name] of order.entries()) {
       const laneItems = items.filter((it) => it.kind === "scene" && it.label === name);
@@ -113,6 +141,7 @@ export class TimelineModel {
     return {
       root,
       projectTitle: (projectNote?.title ?? (root || "Vault")).toString(),
+      scenes,
       lanes,
       written,
       undated,

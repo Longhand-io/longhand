@@ -8,9 +8,10 @@
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import { fromDays, parseStoryDate, ticks } from "../../core/storydate.js";
-import { TimelineModel, type Item, type Timeline } from "./model.js";
+import { TimelineModel, type Item, type SceneRef, type Timeline } from "./model.js";
 
 const DRAG_THRESHOLD = 4;
+type Axis = "story" | "manuscript";
 
 export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: string): ViewHandle {
   const model = new TimelineModel(core, anchorPath);
@@ -24,8 +25,27 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
   title.className = "lh-tl-title";
   const hint = document.createElement("div");
   hint.className = "lh-tl-hint";
-  hint.textContent = "Story date. Click a pin to open its scene, drag it to change the date. Events are dashed.";
-  head.append(title, hint);
+  const axisRow = document.createElement("div");
+  axisRow.className = "lh-tl-axis";
+  const axisLabel = document.createElement("span");
+  axisLabel.textContent = "Axis";
+  const axisButtons = new Map<Axis, HTMLButtonElement>();
+  for (const [id, label] of [["manuscript", "Manuscript order"], ["story", "Story date"]] as [Axis, string][]) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "lh-map-tool";
+    b.textContent = label;
+    b.addEventListener("click", () => {
+      axis = id;
+      axisChosen = true;
+      void render();
+    });
+    axisButtons.set(id, b);
+  }
+  axisRow.append(axisLabel, ...axisButtons.values());
+  head.append(title, hint, axisRow);
+  let axis: Axis = "story";
+  let axisChosen = false;
 
   const scroll = document.createElement("div");
   scroll.className = "lh-tl-scroll";
@@ -54,6 +74,18 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     current = tl;
     title.textContent = `${tl.projectTitle}`;
     board.replaceChildren();
+    const dated = tl.lanes.some((l) => l.items.length > 0);
+    if (!axisChosen) axis = dated ? "story" : "manuscript";
+    for (const [id, b] of axisButtons) b.classList.toggle("lh-map-tool-active", id === axis);
+    hint.textContent =
+      axis === "story"
+        ? "Story date. Click a pin to open its scene, drag it to change the date. Events are dashed."
+        : "Manuscript order. Every scene in binder order, in its thread. Click a pin to open it; switch to story date to place scenes in time.";
+
+    if (axis === "manuscript") {
+      renderManuscript(tl);
+      return;
+    }
 
     // ruler
     const ruler = document.createElement("div");
@@ -137,6 +169,84 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
         });
         tray.appendChild(chip);
       }
+    }
+  };
+
+  /** The manuscript-order axis: every scene, dated or not, evenly along the binder. */
+  const renderManuscript = (tl: Timeline) => {
+    tray.replaceChildren();
+    const ruler = document.createElement("div");
+    ruler.className = "lh-tl-ruler";
+    const parts = new Map<string, number>();
+    tl.scenes.forEach((s, i) => {
+      const rel = tl.root ? s.doc.path.slice(tl.root.length + 1) : s.doc.path;
+      const segs = rel.split("/");
+      const part = segs.length > 2 ? (segs[1] ?? "").replace(/^\d+\s+/, "") : "";
+      if (part && !parts.has(part)) parts.set(part, i);
+    });
+    for (const [part, i] of parts) {
+      const tick = document.createElement("span");
+      tick.className = "lh-tl-tick lh-tl-tick-major";
+      tick.style.left = `${(tl.scenes[i]?.position ?? 0) * 100}%`;
+      tick.style.transform = "none";
+      tick.textContent = part;
+      ruler.appendChild(tick);
+    }
+    board.appendChild(ruler);
+    const lanes: { name: string; color: number | null; scenes: SceneRef[] }[] = [];
+    tl.labels.forEach((name, i) => {
+      const items = tl.scenes.filter((s) => s.label === name);
+      if (items.length) lanes.push({ name, color: i, scenes: items });
+    });
+    const unl = tl.scenes.filter((s) => !s.label);
+    if (unl.length) lanes.push({ name: lanes.length ? "Unlabelled" : "Manuscript", color: null, scenes: unl });
+    for (const lane of lanes) {
+      const track = document.createElement("div");
+      track.className = "lh-tl-track";
+      const name = document.createElement("span");
+      name.className = "lh-tl-lane-name";
+      if (lane.color !== null) {
+        const dot = document.createElement("i");
+        dot.className = "lh-tl-lab";
+        dot.style.background = laneColor(lane.color);
+        name.appendChild(dot);
+      }
+      name.append(document.createTextNode(lane.name));
+      track.appendChild(name);
+      for (const s of lane.scenes) {
+        const pin = document.createElement("div");
+        pin.className = "lh-tl-pin lh-tl-pin-static";
+        pin.style.left = `${4 + s.position * 92}%`;
+        pin.tabIndex = 0;
+        pin.setAttribute("role", "button");
+        const tag = document.createElement("span");
+        tag.className = "lh-tl-tag";
+        if (lane.color !== null) {
+          const dot = document.createElement("i");
+          dot.className = "lh-tl-lab";
+          dot.style.background = laneColor(lane.color);
+          tag.appendChild(dot);
+        }
+        tag.append(document.createTextNode(s.title));
+        pin.appendChild(tag);
+        pin.title = s.synopsis ?? s.title;
+        const open = () => void core.host.openNote(s.doc.path);
+        pin.addEventListener("click", open);
+        pin.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            open();
+          }
+        });
+        track.appendChild(pin);
+      }
+      board.appendChild(track);
+    }
+    if (lanes.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "lh-tl-empty";
+      empty.textContent = "No scenes in this project yet.";
+      board.appendChild(empty);
     }
   };
 

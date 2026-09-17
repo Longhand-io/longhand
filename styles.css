@@ -1172,3 +1172,16 @@
 .lh-nib-dock-global .lh-nib-bubble {
   width: 21rem;
 }
+
+.lh-tl-axis {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--lh-graphite);
+}
+
+.lh-tl-pin-static {
+  cursor: pointer;
+}

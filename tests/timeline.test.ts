@@ -79,6 +79,16 @@ test("the timeline lays scenes in threads by label, events apart, undated in the
     ["The Letter", "The Tin"],
   );
   assert.ok(tl.min < toDays(1897, 4, 1) && tl.max > toDays(1898, 1, 1), "the setting's date is not on the story axis");
+  assert.deepEqual(
+    tl.scenes.map((s) => [s.title, Number(s.position.toFixed(2))]),
+    [
+      ["The Letter", 0],
+      ["The Tin", 0.25],
+      ["Winter Fair", 0.5],
+      ["Undated", 0.75],
+      ["Odd", 1],
+    ],
+  );
 });
 
 test("dragging writes one date field at the note's own precision", async () => {

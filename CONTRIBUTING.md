@@ -22,6 +22,8 @@ Modules never import `obsidian`; they are written against the host interface in 
 
 To try a build in a vault, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/longhand/` and enable Longhand under Community plugins.
 
+For something to look at, `node hack/demo-vault.mjs "<vault>/Harrowmere"` writes a synthetic project with enough metadata to exercise every module: dated and labelled scenes in three parts, characters and places with aliases, events, and a map with pins and drawn shapes. Nothing in it comes from a real manuscript.
+
 ## Developer Certificate of Origin
 
 Every commit must carry a `Signed-off-by:` line matching its author, which certifies the [DCO](DCO):
