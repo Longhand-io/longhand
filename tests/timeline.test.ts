@@ -167,3 +167,21 @@ test("dragging a card to another thread writes only the label; the unlabelled la
   assert.ok(!text.includes("label:"));
   assert.ok(text.includes('date_end: "1897-12-22"'));
 });
+
+test("parts span their dated scenes", async () => {
+  const host = new MemoryHost({
+    "Novel/_Project.md": '---\nlonghand: 1\ntitle: "N"\n---\n',
+    "Novel/Manuscript/01 Part One/01 A.md": '---\nid: "a"\ntype: "text"\ntitle: "A"\ndate: "1897-01-10"\n---\n',
+    "Novel/Manuscript/01 Part One/02 B.md": '---\nid: "b"\ntype: "text"\ntitle: "B"\ndate: "1897-03-01"\ndate_end: "1897-03-05"\n---\n',
+    "Novel/Manuscript/02 Part Two/01 C.md": '---\nid: "c"\ntype: "text"\ntitle: "C"\ndate: "1898"\n---\n',
+    "Novel/Manuscript/03 Part Three/01 D.md": '---\nid: "d"\ntype: "text"\ntitle: "D"\n---\n',
+  });
+  const tl = await new TimelineModel(createCore(host), "Novel/_Project.md").load();
+  assert.deepEqual(
+    tl.parts.map((p) => [p.name, p.count, p.end - p.start]),
+    [
+      ["Part One", 2, toDays(1897, 3, 5) - toDays(1897, 1, 10)],
+      ["Part Two", 1, 0],
+    ],
+  );
+});

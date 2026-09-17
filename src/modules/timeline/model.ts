@@ -44,10 +44,19 @@ export interface SceneRef {
   position: number;
 }
 
+/** A top-level manuscript folder, spanning its earliest to latest dated scene. */
+export interface Part {
+  name: string;
+  start: number;
+  end: number;
+  count: number;
+}
+
 export interface Timeline {
   root: string;
   projectTitle: string;
   calendar: Calendar;
+  parts: Part[];
   /** every scene in binder order, for the manuscript-order axis */
   scenes: SceneRef[];
   lanes: Lane[];
@@ -138,6 +147,23 @@ export class TimelineModel {
     if (unlabelled.length) lanes.push({ name: lanes.length ? "Unlabelled" : "Story", color: null, items: unlabelled });
     const events = items.filter((it) => it.kind === "event");
     if (events.length) lanes.push({ name: "Events", color: null, items: events });
+    // parts: the folder each dated scene sits in, spanning its scenes
+    const partMap = new Map<string, Part>();
+    for (const it of items) {
+      if (it.kind !== "scene") continue;
+      const rel = root ? it.doc.path.slice(root.length + 1) : it.doc.path;
+      const segs = rel.split("/");
+      if (segs.length < 3) continue;
+      const name = (segs[1] ?? "").replace(/^\d+\s+/, "");
+      const endDays = it.end ? it.end.days : it.start.days;
+      const p = partMap.get(name);
+      if (p) {
+        p.start = Math.min(p.start, it.start.days);
+        p.end = Math.max(p.end, endDays);
+        p.count++;
+      } else partMap.set(name, { name, start: it.start.days, end: endDays, count: 1 });
+    }
+    const parts = [...partMap.values()];
     const all = items.map((it) => it.end ? it.end.days : it.start.days).concat(items.map((it) => it.start.days));
     let min = all.length ? Math.min(...all) : 0;
     let max = all.length ? Math.max(...all) : 365;
@@ -150,6 +176,7 @@ export class TimelineModel {
       root,
       projectTitle: (projectNote?.title ?? (root || "Vault")).toString(),
       calendar: this.calendar,
+      parts,
       scenes,
       lanes,
       written,
