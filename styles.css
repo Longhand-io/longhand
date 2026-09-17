@@ -954,3 +954,209 @@
   opacity: 0.5;
   cursor: default;
 }
+
+/* ---- timeline ---- */
+
+.lh-tl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--lh-paper);
+}
+
+.lh-tl-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--lh-rule);
+}
+
+.lh-tl-title {
+  font-family: var(--lh-font-body);
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+.lh-tl-hint {
+  color: var(--lh-graphite);
+  font-size: 0.8rem;
+}
+
+.lh-tl-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem 1.5rem 1rem 1rem;
+}
+
+.lh-tl-board {
+  position: relative;
+  min-width: 40rem;
+}
+
+.lh-tl-ruler {
+  position: relative;
+  height: 1.6rem;
+  border-bottom: 1px solid var(--lh-ink);
+  margin-left: 6rem;
+}
+
+.lh-tl-tick {
+  position: absolute;
+  bottom: 0.25rem;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  color: var(--lh-graphite);
+  white-space: nowrap;
+}
+
+.lh-tl-tick::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.3rem;
+  width: 1px;
+  height: 0.3rem;
+  background: var(--lh-graphite);
+}
+
+.lh-tl-tick-major {
+  color: var(--lh-ink);
+}
+
+.lh-tl-track {
+  position: relative;
+  height: 4.6rem;
+  margin-left: 6rem;
+  border-top: 1px dashed var(--lh-rule);
+}
+
+.lh-tl-track:first-of-type {
+  border-top: 0;
+}
+
+.lh-tl-lane-name {
+  position: absolute;
+  left: -6rem;
+  top: 0.5rem;
+  width: 5.5rem;
+  font-size: 0.82rem;
+  color: var(--lh-graphite);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lh-tl-lab {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+
+.lh-tl-pin {
+  position: absolute;
+  top: 1.9rem;
+  transform: translateX(-50%);
+  cursor: grab;
+  outline: none;
+}
+
+.lh-tl-pin::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -1.35rem;
+  width: 1px;
+  height: 1.3rem;
+  background: var(--lh-ink);
+}
+
+.lh-tl-tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-family: var(--lh-font-body);
+  font-size: 0.85rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--lh-ink);
+  background: var(--lh-paper);
+  border: 1px solid var(--lh-ink);
+  border-radius: var(--lh-card-radius);
+}
+
+.lh-tl-pin:hover .lh-tl-tag,
+.lh-tl-pin:focus-visible .lh-tl-tag {
+  background: var(--lh-ink);
+  color: var(--lh-paper);
+}
+
+.lh-tl-pin-event .lh-tl-tag {
+  border-style: dashed;
+  color: var(--lh-graphite);
+}
+
+.lh-tl-pin-event::before {
+  background: var(--lh-graphite);
+}
+
+.lh-tl-range {
+  position: absolute;
+  left: 0;
+  top: -1.45rem;
+  height: 0.3rem;
+  background: var(--lh-paper-deep);
+  border: 1px solid var(--lh-ink);
+  border-radius: 2px;
+}
+
+.lh-tl-pin-dragging {
+  cursor: grabbing;
+  z-index: 2;
+  opacity: 0.85;
+}
+
+.lh-tl-track-written {
+  height: 2.4rem;
+  border-top: 1px solid var(--lh-rule);
+}
+
+.lh-tl-dot {
+  position: absolute;
+  top: 0.9rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--lh-graphite);
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.lh-tl-empty {
+  padding: 2rem 0 1rem 6rem;
+  color: var(--lh-graphite);
+}
+
+.lh-tl-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--lh-rule);
+  background: var(--lh-paper-deep);
+}
+
+.lh-tl-tray:empty {
+  display: none;
+}
+
+.lh-tl-tray-label {
+  font-size: 0.8rem;
+  color: var(--lh-graphite);
+  margin-right: 0.3rem;
+}

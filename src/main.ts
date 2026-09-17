@@ -11,8 +11,9 @@ import { LonghandSettingTab } from "./host/obsidian/settings.js";
 import { binderModule } from "./modules/binder/index.js";
 import { mapModule } from "./modules/map/index.js";
 import { nibModule } from "./modules/nib/index.js";
+import { timelineModule } from "./modules/timeline/index.js";
 
-const MODULES = [binderModule, mapModule, nibModule];
+const MODULES = [binderModule, mapModule, timelineModule, nibModule];
 
 export default class LonghandPlugin extends Plugin {
   private moduleSettings: ModuleSettings = { enabled: {} };

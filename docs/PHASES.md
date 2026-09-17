@@ -145,9 +145,17 @@ phases:
   - id: L5
     title: Corkboard, threads, story-date axis
     program: manuscript
-    status: planned
-    depends_on: [L4]
-    subphases: []
+    status: in_progress
+    depends_on: [L2]
+    note: "L5.3, the story-date axis, pulled ahead on 2026-09-16 at the maintainer's request; it needs only dates in frontmatter. The corkboard grid and kanban still follow the binder."
+    subphases:
+      - id: L5.3
+        title: Timeline, the story-date axis
+        status: in_progress
+        deliverables:
+          - { id: L5.3-d1, done: true, desc: "project-level view: ruler with adaptive ticks, one thread per label in the project's order, events dashed, ranges from date_end, a Written track from created, an undated tray; click opens, drag writes date at the note's precision; dates at year, month, or day precision in any era", note: "2026-09-16: src/core/storydate.ts, src/modules/timeline; tests/timeline.test.ts" }
+        acceptance:
+          - { id: L5.3-a1, met: false, check: "in the test vault, open the timeline, drag Winter Fair a month later; its frontmatter date changes and nothing else does", method: manual }
   - id: L6
     title: Research and Cast
     program: research-and-cast
