@@ -48,13 +48,27 @@ function note(rel, fields, body = "") {
 
 const created = (d) => `${d}T09:00:00-07:00`;
 
-note("_Project.md", {
-  longhand: 1,
-  title: "Harrowmere",
-  labels: ["Mara", "Tom", "The town"],
-  statuses: ["To Do", "First Draft", "Revised", "Done"],
-  keywords: ["winter", "letters", "flood"],
-}, "# Harrowmere\n\nA synthetic project for trying Longhand. Every scene, character, place, and event here was written for the demo; none of it is from a real manuscript.\n");
+// the project note is the project's settings; written by hand so the choices show as comments
+mkdirSync(root, { recursive: true });
+writeFileSync(join(root, "_Project.md"), `---
+longhand: 1
+title: "Harrowmere"
+labels: ["Mara", "Tom", "The town"]      # the threads on the corkboard and the timeline, in this order
+statuses: ["To Do", "First Draft", "Revised", "Done"]
+keywords: ["winter", "letters", "flood"]
+calendar:                                 # how story dates in this project read
+  kind: gregorian                         # gregorian: 1897, 1897-04, 1897-04-12
+  # kind: custom                          # the writer's own calendar, e.g. 412-Sowing-15
+  # months: [Thaw, Sowing, Harvest, Frost]
+  # days_per_month: 40
+  # era: "AE"
+  # kind: count                           # plain counting, e.g. Day 12
+  # unit: Day
+---
+# Harrowmere
+
+A synthetic project for trying Longhand. Every scene, character, place, and event here was written for the demo; none of it is from a real manuscript.
+`);
 
 // ---- manuscript: three parts, twelve scenes ----
 const scenes = [

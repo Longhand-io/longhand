@@ -170,4 +170,9 @@ export class TimelineModel {
   labelFor(d: StoryDate): string {
     return this.calendar.label(d);
   }
+
+  /** Move a scene to another thread: one `label` field, or none for the unlabelled lane. */
+  async setLabel(path: string, label: string | null): Promise<void> {
+    await this.core.spec.setField(path, "label", label ?? undefined);
+  }
 }

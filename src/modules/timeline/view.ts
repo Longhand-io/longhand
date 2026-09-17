@@ -80,7 +80,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     hint.textContent =
       axis === "story"
         ? `Story date${tl.calendar.kind === "gregorian" ? "" : tl.calendar.kind === "custom" ? ", this project's own calendar" : ", counted"}. Click a pin to open its scene, drag it to change the date. Events are dashed.`
-        : "Manuscript order. Every scene in binder order, in its thread. Click a pin to open it; switch to story date to place scenes in time.";
+        : "Manuscript order. Every scene in binder order, a card in its thread. Click a card to open it; drag it to another thread to change its label.";
 
     if (axis === "manuscript") {
       renderManuscript(tl);
@@ -172,82 +172,108 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     }
   };
 
-  /** The manuscript-order axis: every scene, dated or not, evenly along the binder. */
+  /**
+   * The manuscript-order axis, as the threads board: one column per thread, one row per scene
+   * in binder order, a card in its thread's column, a thread line running down each lane.
+   * Drag a card to another lane and the scene's label changes.
+   */
   const renderManuscript = (tl: Timeline) => {
     tray.replaceChildren();
-    const ruler = document.createElement("div");
-    ruler.className = "lh-tl-ruler";
-    const parts = new Map<string, number>();
-    tl.scenes.forEach((s, i) => {
-      const rel = tl.root ? s.doc.path.slice(tl.root.length + 1) : s.doc.path;
-      const segs = rel.split("/");
-      const part = segs.length > 2 ? (segs[1] ?? "").replace(/^\d+\s+/, "") : "";
-      if (part && !parts.has(part)) parts.set(part, i);
-    });
-    for (const [part, i] of parts) {
-      const tick = document.createElement("span");
-      tick.className = "lh-tl-tick lh-tl-tick-major";
-      tick.style.left = `${(tl.scenes[i]?.position ?? 0) * 100}%`;
-      tick.style.transform = "none";
-      tick.textContent = part;
-      ruler.appendChild(tick);
-    }
-    board.appendChild(ruler);
-    const lanes: { name: string; color: number | null; scenes: SceneRef[] }[] = [];
-    tl.labels.forEach((name, i) => {
-      const items = tl.scenes.filter((s) => s.label === name);
-      if (items.length) lanes.push({ name, color: i, scenes: items });
-    });
-    const unl = tl.scenes.filter((s) => !s.label);
-    if (unl.length) lanes.push({ name: lanes.length ? "Unlabelled" : "Manuscript", color: null, scenes: unl });
-    for (const lane of lanes) {
-      const track = document.createElement("div");
-      track.className = "lh-tl-track";
-      const name = document.createElement("span");
-      name.className = "lh-tl-lane-name";
-      if (lane.color !== null) {
+    const threads: { name: string; color: number | null; key: string | null }[] = tl.labels.map((name, i) => ({ name, color: i, key: name }));
+    const hasUnlabelled = tl.scenes.some((s) => !s.label);
+    if (hasUnlabelled || threads.length === 0) threads.push({ name: threads.length ? "Unlabelled" : "Manuscript", color: null, key: null });
+    const grid = document.createElement("div");
+    grid.className = "lh-th";
+    grid.style.gridTemplateColumns = `3rem repeat(${threads.length}, minmax(11rem, 1fr))`;
+    const corner = document.createElement("div");
+    corner.className = "lh-th-head";
+    grid.appendChild(corner);
+    for (const th of threads) {
+      const h = document.createElement("div");
+      h.className = "lh-th-head";
+      if (th.color !== null) {
         const dot = document.createElement("i");
         dot.className = "lh-tl-lab";
-        dot.style.background = laneColor(lane.color);
-        name.appendChild(dot);
+        dot.style.background = laneColor(th.color);
+        h.appendChild(dot);
       }
-      name.append(document.createTextNode(lane.name));
-      track.appendChild(name);
-      for (const s of lane.scenes) {
-        const pin = document.createElement("div");
-        pin.className = "lh-tl-pin lh-tl-pin-static";
-        pin.style.left = `${4 + s.position * 92}%`;
-        pin.tabIndex = 0;
-        pin.setAttribute("role", "button");
-        const tag = document.createElement("span");
-        tag.className = "lh-tl-tag";
-        if (lane.color !== null) {
-          const dot = document.createElement("i");
-          dot.className = "lh-tl-lab";
-          dot.style.background = laneColor(lane.color);
-          tag.appendChild(dot);
-        }
-        tag.append(document.createTextNode(s.title));
-        pin.appendChild(tag);
-        pin.title = s.synopsis ?? s.title;
-        const open = () => void core.host.openNote(s.doc.path);
-        pin.addEventListener("click", open);
-        pin.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" || ev.key === " ") {
-            ev.preventDefault();
-            open();
-          }
-        });
-        track.appendChild(pin);
-      }
-      board.appendChild(track);
+      h.append(document.createTextNode(th.name));
+      grid.appendChild(h);
     }
-    if (lanes.length === 0) {
+    if (tl.scenes.length === 0) {
       const empty = document.createElement("div");
       empty.className = "lh-tl-empty";
+      empty.style.gridColumn = `1 / span ${threads.length + 1}`;
       empty.textContent = "No scenes in this project yet.";
-      board.appendChild(empty);
+      grid.appendChild(empty);
     }
+    tl.scenes.forEach((s, i) => {
+      const ord = document.createElement("div");
+      ord.className = "lh-th-ord";
+      ord.textContent = String(i + 1);
+      grid.appendChild(ord);
+      for (const th of threads) {
+        const lane = document.createElement("div");
+        lane.className = "lh-th-lane" + (i === tl.scenes.length - 1 ? " lh-th-lane-last" : "") + (i === 0 ? " lh-th-lane-first" : "");
+        if (th.color !== null) lane.style.setProperty("--lane", laneColor(th.color));
+        const mine = (s.label ?? null) === th.key;
+        if (mine) lane.appendChild(cardFor(s, th.color));
+        lane.addEventListener("dragover", (ev) => {
+          if (!dragged || mine) return;
+          ev.preventDefault();
+          lane.classList.add("lh-th-lane-over");
+        });
+        lane.addEventListener("dragleave", () => lane.classList.remove("lh-th-lane-over"));
+        lane.addEventListener("drop", (ev) => {
+          ev.preventDefault();
+          lane.classList.remove("lh-th-lane-over");
+          if (!dragged || mine) return;
+          const path = dragged;
+          dragged = null;
+          void write(() => model.setLabel(path, th.key));
+        });
+        grid.appendChild(lane);
+      }
+    });
+    board.appendChild(grid);
+  };
+
+  let dragged: string | null = null;
+  const cardFor = (s: SceneRef, color: number | null): HTMLElement => {
+    const card = document.createElement("div");
+    card.className = "lh-card";
+    if (color !== null) card.style.borderLeftColor = laneColor(color);
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.draggable = true;
+    const t = document.createElement("div");
+    t.className = "lh-card-t";
+    t.textContent = s.title;
+    card.appendChild(t);
+    if (s.synopsis) {
+      const syn = document.createElement("div");
+      syn.className = "lh-card-s";
+      syn.textContent = s.synopsis;
+      card.appendChild(syn);
+    }
+    const open = () => void core.host.openNote(s.doc.path);
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        open();
+      }
+    });
+    card.addEventListener("dragstart", (ev) => {
+      dragged = s.doc.path;
+      card.classList.add("lh-card-dragging");
+      ev.dataTransfer?.setData("text/plain", s.doc.path);
+    });
+    card.addEventListener("dragend", () => {
+      dragged = null;
+      card.classList.remove("lh-card-dragging");
+    });
+    return card;
   };
 
   const pinFor = (item: Item, color: number | null): HTMLElement => {

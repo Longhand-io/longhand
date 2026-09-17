@@ -154,3 +154,16 @@ test("a counting calendar: Day 12, plain numbers, and ticks in units", async () 
   assert.ok(tl.calendar.ticks(0, 60).every((t) => /^Day \d+$/.test(t.label)));
   assert.equal(tl.calendar.parse("Week 3"), null);
 });
+
+test("dragging a card to another thread writes only the label; the unlabelled lane removes it", async () => {
+  const host = vault();
+  const core = createCore(host);
+  const m = new TimelineModel(core, "Novel/_Project.md");
+  await m.setLabel("Novel/Manuscript/03 Winter Fair.md", "Red");
+  let text = host.files.get("Novel/Manuscript/03 Winter Fair.md")!;
+  assert.ok(text.includes('date_end: "1897-12-22"\nlabel: "Red"\n'));
+  await m.setLabel("Novel/Manuscript/03 Winter Fair.md", null);
+  text = host.files.get("Novel/Manuscript/03 Winter Fair.md")!;
+  assert.ok(!text.includes("label:"));
+  assert.ok(text.includes('date_end: "1897-12-22"'));
+});

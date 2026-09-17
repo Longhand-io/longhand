@@ -13,6 +13,7 @@
   --lh-font-body: "Newsreader", Georgia, "Times New Roman", serif;
   --lh-font-ui: var(--font-interface, system-ui, sans-serif);
   --lh-card-radius: 2px;
+  --lh-card: #fbfbf9;
   /* named inks for drawn shapes; a theme may retune them */
   --lh-color-ink: var(--lh-ink);
   --lh-color-graphite: var(--lh-graphite);
@@ -27,6 +28,7 @@
 }
 
 .theme-dark .lh-root {
+  --lh-card: #262d3b;
   --lh-paper: #1e2432;
   --lh-paper-deep: #171c27;
   --lh-ink: #f3f4f1;
@@ -1184,4 +1186,111 @@
 
 .lh-tl-pin-static {
   cursor: pointer;
+}
+
+/* ---- the threads board (manuscript-order axis), as on the site ---- */
+
+.lh-tl-head {
+  padding: 0.7rem 1.25rem;
+}
+
+.lh-tl-axis .lh-map-tool {
+  border-radius: 3px;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.lh-th {
+  display: grid;
+  column-gap: 1.25rem;
+  row-gap: 0.9rem;
+  position: relative;
+  padding: 0.25rem 0.25rem 1rem;
+  min-width: min-content;
+}
+
+.lh-th-head {
+  font-size: 0.9rem;
+  color: var(--lh-graphite);
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--lh-rule);
+  white-space: nowrap;
+}
+
+.lh-th-ord {
+  font-size: 0.85rem;
+  color: var(--lh-graphite);
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-th-lane {
+  position: relative;
+  min-height: 2.6rem;
+  border-radius: 3px;
+}
+
+.lh-th-lane::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -0.9rem;
+  bottom: -0.9rem;
+  width: 3px;
+  background: color-mix(in srgb, var(--lane, var(--lh-rule)) 35%, var(--lh-paper));
+}
+
+.lh-th-lane-first::before {
+  top: 0;
+}
+
+.lh-th-lane-last::before {
+  bottom: 0;
+}
+
+.lh-th-lane-over {
+  outline: 1px dashed var(--lh-ink);
+  outline-offset: -1px;
+}
+
+.lh-th-lane-over::after {
+  content: "Drop here";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--lh-graphite);
+  font-size: 0.85rem;
+}
+
+.lh-card {
+  position: relative;
+  padding: 0.7rem 0.9rem 0.75rem;
+  background: var(--lh-card);
+  border: 1px solid var(--lh-rule);
+  border-left: 3px solid var(--lh-rule);
+  box-shadow: 0 1px 0 var(--lh-rule);
+  cursor: pointer;
+  outline: none;
+}
+
+.lh-card:hover,
+.lh-card:focus-visible {
+  border-color: var(--lh-ink);
+  border-left-width: 3px;
+}
+
+.lh-card-dragging {
+  opacity: 0.5;
+}
+
+.lh-card-t {
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.lh-card-s {
+  color: var(--lh-graphite);
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
