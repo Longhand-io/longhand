@@ -16,17 +16,27 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
   el.appendChild(root);
   const head = document.createElement("div");
   head.className = "lh-binder-head";
-  const title = document.createElement("div");
-  title.className = "lh-binder-title";
+  // the project switcher: every project in the vault; follows the note you open, or your pick
+  const picker = document.createElement("select");
+  picker.className = "lh-binder-picker";
+  picker.title = "Which project the binder shows";
+  picker.setAttribute("aria-label", "Project");
   const total = document.createElement("div");
   total.className = "lh-binder-total";
-  head.append(title, total);
+  head.append(picker, total);
+  picker.addEventListener("change", () => {
+    projectRoot = picker.value;
+    pinned = true;
+    void render();
+  });
   const list = document.createElement("div");
   list.className = "lh-binder-tree";
   root.append(head, list);
 
   const collapsed = new Set<string>();
   let projectRoot: string | null = null;
+  /** true after the writer picked a project by hand; opening a note in another project still switches */
+  let pinned = false;
   let activePath: string | null = core.host.activeFile();
   let writing = false;
   let disposed = false;
@@ -34,25 +44,32 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
 
   const render = async () => {
     if (disposed) return;
+    const roots = await core.projects.roots();
+    const titles = new Map<string, string>();
+    for (const r of roots) titles.set(r.root, (await core.spec.read(r.notePath)).title ?? (r.root || "Vault"));
     const anchor = activePath ?? "";
     const project = anchor ? await core.projects.projectOf(anchor) : null;
-    if (!project && projectRoot === null) {
-      const roots = await core.projects.roots();
-      if (roots.length === 1) projectRoot = roots[0]!.root;
-    } else if (project) projectRoot = project.root;
+    if (project && !pinned) projectRoot = project.root;
+    if (projectRoot === null || !titles.has(projectRoot)) projectRoot = project?.root ?? roots[0]?.root ?? null;
+    picker.replaceChildren();
+    for (const r of roots) {
+      const o = document.createElement("option");
+      o.value = r.root;
+      o.textContent = titles.get(r.root) ?? r.root;
+      picker.appendChild(o);
+    }
+    if (projectRoot !== null) picker.value = projectRoot;
+    picker.hidden = roots.length === 0;
     if (projectRoot === null) {
-      title.textContent = "Binder";
       total.textContent = "";
       list.replaceChildren();
       const p = document.createElement("p");
       p.className = "lh-binder-empty";
-      p.textContent = "Open a note in a project and its binder appears here.";
+      p.textContent = "No project in this vault yet. A project is a folder with a _Project.md note; New… on the ribbon can start one.";
       list.appendChild(p);
       return;
     }
-    const projectNote = await core.spec.read(projectRoot ? `${projectRoot}/_Project.md` : "_Project.md").catch(() => null);
     const tree = await buildTree(core, projectRoot);
-    title.textContent = projectNote?.title ?? (projectRoot || "Vault");
     total.textContent = `${formatCount(tree.words)} words`;
     list.replaceChildren();
     for (const [i, child] of tree.children.entries()) list.appendChild(row(child, tree, i, 0));
@@ -166,7 +183,10 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
     if (!writing) void render();
   });
   const unsubActive = core.host.onActiveFileChanged((path) => {
-    if (path && path.endsWith(".md")) activePath = path;
+    if (path && path.endsWith(".md")) {
+      activePath = path;
+      pinned = false;
+    }
     void render();
   });
   void render();

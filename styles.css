@@ -1471,3 +1471,22 @@
 .lh-binder-drop-below::after {
   bottom: -1px;
 }
+
+.lh-root select.lh-binder-picker {
+  flex: 1;
+  min-width: 0;
+  padding: 0.15rem 0.4rem;
+  font-family: var(--lh-font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--lh-ink);
+  background: var(--lh-paper);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.lh-root select.lh-binder-picker:hover {
+  border-color: var(--lh-rule);
+}
