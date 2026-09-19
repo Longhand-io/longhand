@@ -1334,3 +1334,140 @@
 .lh-tl-track {
   transition: height 0.15s;
 }
+
+/* ---- binder ---- */
+
+.lh-binder {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--lh-paper);
+  font-size: 0.86rem;
+}
+
+.lh-binder-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem 0.5rem;
+  border-bottom: 1px solid var(--lh-rule);
+}
+
+.lh-binder-title {
+  font-family: var(--lh-font-body);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.lh-binder-total {
+  color: var(--lh-graphite);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-binder-tree {
+  flex: 1;
+  overflow: auto;
+  padding: 0.3rem 0 1rem;
+}
+
+.lh-binder-empty {
+  padding: 0.8rem;
+  color: var(--lh-graphite);
+}
+
+.lh-binder-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.6rem 0.22rem 0.6rem;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+  position: relative;
+}
+
+.lh-binder-row:hover,
+.lh-binder-row:focus-visible {
+  background: var(--lh-paper-deep);
+}
+
+.lh-binder-active {
+  background: var(--lh-paper-deep);
+  box-shadow: inset 2px 0 0 var(--lh-ink);
+}
+
+.lh-binder-twisty {
+  width: 0.9rem;
+  flex: none;
+  color: var(--lh-graphite);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.lh-binder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lh-binder-folder .lh-binder-name {
+  font-weight: 600;
+}
+
+.lh-binder-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: none;
+}
+
+.lh-binder-words {
+  color: var(--lh-graphite);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-binder-status {
+  padding: 0 0.35rem;
+  border: 1px solid var(--lh-rule);
+  border-radius: 999px;
+  font-size: 0.66rem;
+  color: var(--lh-graphite);
+  white-space: nowrap;
+}
+
+.lh-binder-lab {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--lh-graphite);
+  vertical-align: 0;
+}
+
+.lh-binder-dragging {
+  opacity: 0.5;
+}
+
+.lh-binder-drop-above::before,
+.lh-binder-drop-below::after {
+  content: "";
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  height: 2px;
+  background: var(--lh-ink);
+}
+
+.lh-binder-drop-above::before {
+  top: -1px;
+}
+
+.lh-binder-drop-below::after {
+  bottom: -1px;
+}

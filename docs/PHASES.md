@@ -142,6 +142,13 @@ phases:
           - { id: L4.1-d1, done: true, desc: "New… command, ribbon button, and folder menu entry: scene, folder, character, setting, event, map; placement rules per kind; next numeric prefix at the siblings' width; id, type, title, created written; the note opens", note: "2026-09-15: src/modules/binder/index.ts, src/core/naming.ts; tests/binder.test.ts" }
         acceptance:
           - { id: L4.1-a1, met: false, check: "in an imported project, New scene from a chapter creates the next-numbered file beside it and opens it; New character lands beside the other characters", method: manual }
+      - id: L4.2
+        title: Binder tree
+        status: in_progress
+        deliverables:
+          - { id: L4.2-d1, done: true, desc: "left-sidebar tree in binder order; folders as chapters with summed words; status pill and label dot per scene; active scene marked; click opens; drag among siblings renumbers files (two-step renames through the host so links follow) or writes order fields; follows the active project", note: "2026-09-18: src/modules/binder/tree.ts and view.ts; tests/binder-tree.test.ts covers the tree, numbered and unnumbered moves, and folder moves" }
+        acceptance:
+          - { id: L4.2-a1, met: false, check: "in an imported project, drag chapter three above chapter two; the files are renumbered, wikilinks to them still resolve, and the tree and the timeline agree", method: manual }
   - id: L5
     title: Corkboard, threads, story-date axis
     program: manuscript

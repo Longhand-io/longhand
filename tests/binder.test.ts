@@ -75,7 +75,8 @@ test("New… asks for the kind; New here… uses the folder; New folder creates 
   const host = vault();
   const core = createCore(host);
   await binderModule.register(core);
-  assert.equal(host.ribbon.length, 1);
+  assert.equal(host.ribbon.length, 2);
+  assert.equal(host.views.get("longhand-binder")?.placement, "left");
   host.choices.push("character");
   host.prompts.push("Tom");
   await host.commands.get("new")!.run();

@@ -357,16 +357,8 @@ function citeAppearance(a: Appearance): Cite {
   return { label: a.title, detail: `${a.chapter ? a.chapter + " · " : ""}“${a.sentence}”`, path: a.doc.path };
 }
 
-export function words(text: string): number {
-  const body = fm.parse(text).body;
-  const plain = body
-    .replace(/%%[\s\S]*?%%/g, "")
-    .replace(/^---[\s\S]*?---/m, "")
-    .replace(/!?\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g, (_m, t: string, a?: string) => a ?? t)
-    .replace(/[#>*_`~]/g, " ");
-  const m = plain.match(/[\p{L}\p{N}'’-]+/gu);
-  return m ? m.length : 0;
-}
+import { words } from "../../core/text.js";
+export { words };
 
 function fmt(n: number): string {
   return n.toLocaleString("en-US");

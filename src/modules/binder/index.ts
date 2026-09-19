@@ -9,8 +9,10 @@ import type { Core, Module } from "../../core/modules.js";
 import type { NoteType } from "../../core/spec.js";
 import { childrenOf, dirOf, newId, nextName, nowIso, uniquePath } from "../../core/naming.js";
 import { newMapNote } from "../map/model.js";
+import { mountBinderView } from "./view.js";
 
 export const MAP_VIEW_TYPE = "longhand-map";
+export const BINDER_VIEW = "longhand-binder";
 
 export interface NewKind {
   id: NoteType;
@@ -30,11 +32,20 @@ export const KINDS: NewKind[] = [
 export const binderModule: Module = {
   id: "binder",
   name: "Binder",
-  description: "New scenes, folders, characters, settings, events, and maps in the right place with the right frontmatter. The ordered tree comes next.",
+  description: "The manuscript as an ordered tree with word counts, drag to reorder, and New for scenes, folders, characters, settings, events, and maps in the right place with the right frontmatter.",
   defaultEnabled: true,
 
   register(core: Core) {
     const host = core.host;
+
+    host.registerView(BINDER_VIEW, {
+      icon: "list-tree",
+      placement: "left",
+      title: () => "Binder",
+      mount: (el) => mountBinderView(core, el),
+    });
+    host.registerCommand({ id: "binder-open", name: "Open binder", run: () => host.openView(BINDER_VIEW, { path: "" }) });
+    host.registerRibbon("list-tree", "Open binder", () => host.openView(BINDER_VIEW, { path: "" }));
 
     const create = async (kind: NoteType, atFolder?: string) => {
       const title = await host.prompt(`${KINDS.find((k) => k.id === kind)?.label ?? "Note"} title`, "");

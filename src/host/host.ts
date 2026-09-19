@@ -24,8 +24,8 @@ export interface ViewHandle {
 
 export interface ViewFactory {
   icon: string;
-  /** "tab" (default) opens in the main area; "right" in the right sidebar */
-  placement?: "tab" | "right";
+  /** "tab" (default) opens in the main area; "right" or "left" in a sidebar */
+  placement?: "tab" | "right" | "left";
   title(state: ViewState): string;
   mount(el: HTMLElement, state: ViewState): ViewHandle;
 }
@@ -76,6 +76,8 @@ export interface Host {
   writeFile(path: string, text: string): Promise<void>;
   exists(path: string): boolean;
   createFolder(path: string): Promise<void>;
+  /** rename or move a file or folder; the host updates links that point at it */
+  renameFile(path: string, newPath: string): Promise<void>;
   listFiles(): string[];
   onFileChanged(cb: (change: FileChange) => void): () => void;
   /** frontmatter as the host has it cached, for sync checks; null when unknown */

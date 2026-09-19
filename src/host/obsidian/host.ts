@@ -129,6 +129,12 @@ export class ObsidianHost implements Host {
     return this.app.vault.getAbstractFileByPath(normalizePath(path)) !== null;
   }
 
+  async renameFile(path: string, newPath: string): Promise<void> {
+    const f = this.app.vault.getAbstractFileByPath(normalizePath(path));
+    if (!f) throw new Error(`no such file or folder: ${path}`);
+    await this.app.fileManager.renameFile(f, normalizePath(newPath));
+  }
+
   async createFolder(path: string): Promise<void> {
     const norm = normalizePath(path);
     if (!this.app.vault.getAbstractFileByPath(norm)) await this.app.vault.createFolder(norm);
@@ -184,15 +190,16 @@ export class ObsidianHost implements Host {
   }
 
   async openView(type: string, state: ViewState): Promise<void> {
-    const right = this.factories.get(type)?.placement === "right";
+    const placement = this.factories.get(type)?.placement ?? "tab";
+    const sidebar = placement !== "tab";
     const leaves = this.app.workspace.getLeavesOfType(type);
     // a sidebar view is one per workspace: reveal it as it is rather than remounting with a new path
-    const existing = right ? leaves[0] : leaves.find((l) => (l.view as HostView).currentPath() === state.path);
+    const existing = sidebar ? leaves[0] : leaves.find((l) => (l.view as HostView).currentPath() === state.path);
     if (existing) {
       await this.app.workspace.revealLeaf(existing);
       return;
     }
-    const leaf = right ? this.app.workspace.getRightLeaf(false) : this.app.workspace.getLeaf("tab");
+    const leaf = placement === "right" ? this.app.workspace.getRightLeaf(false) : placement === "left" ? this.app.workspace.getLeftLeaf(false) : this.app.workspace.getLeaf("tab");
     if (!leaf) return;
     await leaf.setViewState({ type, state: { path: state.path }, active: true });
     await this.app.workspace.revealLeaf(leaf);
@@ -369,8 +376,8 @@ class HostView extends ItemView {
     const container = this.contentEl;
     container.empty();
     this.handle = this.factory.mount(container, this.state);
-    // companions such as Nib's corner button ride along on views that have a file; not on Nib itself
-    if (this.state.path && this.factory.placement !== "right") {
+    // companions ride along on main-area views that have a file; not on sidebar views
+    if (this.state.path && (this.factory.placement ?? "tab") === "tab") {
       for (const c of this.host.companions) this.companionHandles.push(c.mount(container, this.state));
     }
   }

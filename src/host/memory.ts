@@ -55,6 +55,25 @@ export class MemoryHost implements Host {
     this.folders.push(path);
   }
 
+  async renameFile(path: string, newPath: string): Promise<void> {
+    if (this.files.has(path)) {
+      const text = this.files.get(path)!;
+      this.files.delete(path);
+      this.files.set(newPath, text);
+    } else {
+      // a folder: move everything under it
+      for (const p of [...this.files.keys()]) {
+        if (p.startsWith(path + "/")) {
+          const text = this.files.get(p)!;
+          this.files.delete(p);
+          this.files.set(newPath + p.slice(path.length), text);
+        }
+      }
+      this.folders = this.folders.map((f) => (f === path ? newPath : f));
+    }
+    for (const l of this.listeners) l({ kind: "rename", path: newPath, oldPath: path });
+  }
+
   listFiles(): string[] {
     return [...this.files.keys()].sort();
   }
