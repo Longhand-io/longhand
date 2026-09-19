@@ -37,7 +37,7 @@ Longhand does not sync. iCloud, Dropbox, Obsidian Sync, Syncthing, or a git remo
 
 ## Where things are going
 
-[Programs](docs/programs.md) names the product lines and what in each is open or paid. [The roadmap](ROADMAP.md) tells the story by release. [The ledger](docs/PHASES.md) is the delivery state.
+[Programs](docs/programs.md) names the product lines and what in each is open or paid. [Hosts](docs/hosts.md) draws the line between Longhand and the program it runs inside. [The roadmap](ROADMAP.md) tells the story by release. [The ledger](docs/PHASES.md) is the delivery state.
 
 ## A writing day
 
