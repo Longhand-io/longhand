@@ -768,15 +768,16 @@
   pointer-events: auto;
 }
 
+/* the character has its own colours in every theme, like a sticker: ink on a paper disc */
 .lh-root button.lh-nib-dock-button {
-  width: 3.8rem;
-  height: 3.8rem;
-  padding: 0.45rem;
-  border: 1px solid var(--lh-rule);
+  width: 4.8rem;
+  height: 4.8rem;
+  padding: 0.4rem;
+  border: 1px solid #cfd2cc;
   border-radius: 50%;
-  background: var(--lh-ink);
-  color: var(--lh-paper);
-  box-shadow: 0 4px 14px rgba(30, 36, 50, 0.25);
+  background: #f3f4f1;
+  color: #1e2432;
+  box-shadow: 0 4px 14px rgba(30, 36, 50, 0.3);
   cursor: pointer;
 }
 
@@ -853,17 +854,17 @@
 /* ---- the character. At rest it is the mark; when it has something it pops up and the eyes open. ---- */
 
 .lh-nc svg { overflow: visible; }
-.lh-nc .lh-nc-body { fill: var(--lh-paper); transform-origin: 39px 76px; transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1); }
-.lh-nc .lh-nc-slit { stroke: var(--lh-ink); stroke-width: 3; }
-.lh-nc .lh-nc-hole { fill: var(--lh-ink); }
-.lh-nc .lh-nc-line { stroke: var(--lh-paper); stroke-width: 9; stroke-linecap: round; }
+.lh-nc .lh-nc-body { fill: #1e2432; transform-origin: 39px 76px; transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.lh-nc .lh-nc-slit { stroke: #f3f4f1; stroke-width: 3; }
+.lh-nc .lh-nc-hole { fill: #f3f4f1; }
+.lh-nc .lh-nc-line { stroke: #1e2432; stroke-width: 9; stroke-linecap: round; }
 .lh-nc .lh-nc-eye { fill: #fbfbf9; transform-origin: center; transform-box: fill-box; }
 .lh-nc .lh-nc-pupil { fill: #1e2432; transition: transform 0.12s; }
-.lh-nc .lh-nc-lid { fill: var(--lh-paper); transform-origin: center; transform-box: fill-box; transform: scaleY(0); }
-.lh-nc .lh-nc-brow { stroke: var(--lh-ink); stroke-width: 2.5; stroke-linecap: round; fill: none; opacity: 0; }
-.lh-nc .lh-nc-badge { fill: var(--lh-color-yellow); stroke: var(--lh-ink); stroke-width: 2; opacity: 0; }
-.lh-nc .lh-nc-scribble { stroke: var(--lh-paper); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-dasharray: 90; stroke-dashoffset: 90; opacity: 0; }
-.lh-nc .lh-nc-halo { fill: none; stroke: var(--lh-color-yellow); stroke-width: 2; opacity: 0; }
+.lh-nc .lh-nc-lid { fill: #1e2432; transform-origin: center; transform-box: fill-box; transform: scaleY(0); }
+.lh-nc .lh-nc-brow { stroke: #f3f4f1; stroke-width: 2.5; stroke-linecap: round; fill: none; opacity: 0; }
+.lh-nc .lh-nc-badge { fill: #c9a24a; stroke: #f3f4f1; stroke-width: 2; opacity: 0; }
+.lh-nc .lh-nc-scribble { stroke: #1e2432; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-dasharray: 90; stroke-dashoffset: 90; opacity: 0; }
+.lh-nc .lh-nc-halo { fill: none; stroke: #c9a24a; stroke-width: 2; opacity: 0; }
 .lh-nc .lh-nc-character { transform-origin: 50% 80%; }
 .lh-nc .lh-nc-head { transform-origin: 39px 44px; }
 .lh-nc .lh-nc-eyes { opacity: 0; transform: scale(0.6); transform-origin: 39px 27px; transition: opacity 0.25s, transform 0.25s; }
