@@ -5,9 +5,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createCore } from "../src/core/modules.js";
 import { MemoryHost } from "../src/host/memory.js";
-import { ask, findNote, perform, resetJoke, scopeOf, words } from "../src/modules/nib/answers.js";
+import { ask, findNote, perform, scopeOf, words } from "../src/modules/nib/answers.js";
+import { NibSession } from "../src/modules/nib/session.js";
 import { nibModule } from "../src/modules/nib/index.js";
-import { askInSidebar, clearHistory, suggest } from "../src/modules/nib/view.js";
+import { suggest } from "../src/modules/nib/view.js";
 
 function vault(): MemoryHost {
   return new MemoryHost({
@@ -84,12 +85,13 @@ test("on the map: pins and shapes that link to the note", async () => {
 });
 
 test("anything else gets the help card, and the joke exactly once", async () => {
-  resetJoke();
   const core = createCore(vault());
-  const first = await ask(core, "write me a better opening");
+  const session = new NibSession();
+  const first = await ask(core, "write me a better opening", session);
   assert.equal(first.kind, "help");
   assert.match(first.text, /That was the one joke/);
-  const second = await ask(core, "and another");
+  assert.equal(first.joke, true);
+  const second = await ask(core, "and another", session);
   assert.doesNotMatch(second.text, /joke/);
   assert.match(second.text, /hosted Nib, which is off/);
 });
@@ -108,10 +110,11 @@ test("module is off by default and registers a right-hand view and the Ask Nib c
 });
 
 test("a question from the corner opens the sidebar with the context, carrying what Nib said", async () => {
-  clearHistory();
   const host = vault();
   const core = createCore(host);
-  await askInSidebar(core, "Which places have no scene?", "Novel/Maps/Harrowmere.md", "Harrow Wood is on this map but no scene is set there yet.");
+  const session = new NibSession();
+  await session.askInSidebar(core, "longhand-nib", "Which places have no scene?", "Novel/Maps/Harrowmere.md", "Harrow Wood is on this map but no scene is set there yet.");
+  assert.deepEqual(session.pending, { question: "Which places have no scene?", preface: "Harrow Wood is on this map but no scene is set there yet." });
   assert.deepEqual(host.openedViews, [{ type: "longhand-nib", state: { path: "Novel/Maps/Harrowmere.md" } }]);
 });
 

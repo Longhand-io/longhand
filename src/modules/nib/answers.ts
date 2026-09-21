@@ -34,6 +34,8 @@ export interface Answer {
   text: string;
   cites: Cite[];
   actions?: Action[];
+  /** the one joke rode along on this answer */
+  joke?: true;
   /** what kind of question this was, for tests and for the suggestion chips */
   kind: "last-seen" | "set-at" | "unused" | "who-in" | "length" | "on-map" | "audit" | "open" | "help";
 }
@@ -62,46 +64,53 @@ export async function projectsToOpen(core: Core): Promise<{ title: string; noteP
   return (await core.projects.roots()).map((p) => ({ title: p.title, notePath: p.notePath, root: p.root }));
 }
 
-let jokeTold = false;
-
-/** Test hook: forget the joke was told. */
-export function resetJoke(): void {
-  jokeTold = false;
+/** What ask needs to remember across questions: only whether the joke has been told. */
+export interface Memory {
+  jokeTold: boolean;
 }
 
-export async function ask(core: Core, question: string): Promise<Answer> {
+/** One question shape Nib understands, in the order they are tried. */
+interface Route {
+  patterns: RegExp[];
+  /** shown on the help card; the chips are built elsewhere from the project */
+  example: string;
+  run(core: Core, captured: string): Promise<Answer>;
+}
+
+const ROUTES: Route[] = [
+  { patterns: [/^(?:open|go\s+to|show\s+me)\s+(.+)$/i], example: "open Harrowmere", run: open },
+  // before last-seen, whose "where is X" would otherwise swallow "where is X on the map"
+  { patterns: [/^where(?:'s|\s+is)\s+(.+?)\s+on\s+(?:the|a)\s+map$/i, /^(?:is\s+)?(.+?)\s+(?:pinned|on\s+the\s+map)$/i], example: "where is the house on the map", run: onMap },
+  {
+    patterns: [/^(?:where|when)\s+(?:was|is|were|are)\s+(.+?)\s+last(?:\s+seen)?$/i, /^last\s+seen[:\s]+(.+)$/i, /^where(?:'s|\s+is|\s+was)\s+(.+?)(?:\s+now)?$/i],
+    example: "where was Mara last seen",
+    run: lastSeen,
+  },
+  {
+    patterns: [/^(?:what(?:'s|\s+is)\s+set\s+(?:at|in)|what\s+happens\s+(?:at|in)|(?:which|what)\s+scenes\s+(?:are\s+)?(?:at|in|set\s+(?:at|in))|scenes\s+(?:at|in))\s+(.+)$/i],
+    example: "what is set at Stillwater",
+    run: setAt,
+  },
+  { patterns: [/^(?:which|what)\s+(?:places|settings|locations)\s+(?:have|has|with)\s+no\s+scenes?$/i, /^unused\s+(?:places|settings)$/i], example: "which places have no scene", run: (core) => unused(core, "setting") },
+  { patterns: [/^(?:which|what|who)\s+(?:characters|people)\s+(?:have|has|with)\s+no\s+scenes?$/i, /^unused\s+(?:characters|people)$/i], example: "which characters have no scene", run: (core) => unused(core, "character") },
+  {
+    patterns: [/^(?:which|what)\s+scenes\s+(?:mention|name|could\s+be\s+(?:set\s+)?at|might\s+be\s+(?:set\s+)?at)\s+(.+)$/i, /^(?:audit|find\s+scenes\s+(?:that\s+)?mention(?:ing)?)\s+(.+)$/i],
+    example: "which scenes mention Harrow Wood",
+    run: audit,
+  },
+  { patterns: [/^who(?:'s|\s+is|\s+appears|\s+was)\s+in\s+(.+)$/i], example: "who is in 03 Winter Fair", run: whoIn },
+  { patterns: [/^how\s+(?:long|many\s+words)\s+(?:is|are|in)?\s*(.+)$/i, /^word\s*count(?:\s+(?:of|for))?\s+(.+)$/i], example: "how long is Part One", run: length },
+];
+
+export async function ask(core: Core, question: string, memory: Memory = { jokeTold: true }): Promise<Answer> {
   const q = question.trim().replace(/[?.!]+$/, "");
-  let m: RegExpExecArray | null;
-
-  if ((m = /^(?:open|go\s+to|show\s+me)\s+(.+)$/i.exec(q))) {
-    return open(core, m[1] ?? "");
+  for (const route of ROUTES) {
+    for (const p of route.patterns) {
+      const m = p.exec(q);
+      if (m) return route.run(core, m[1] ?? "");
+    }
   }
-
-  if ((m = /^(?:where|when)\s+(?:was|is|were|are)\s+(.+?)\s+last(?:\s+seen)?$/i.exec(q)) || (m = /^last\s+seen[:\s]+(.+)$/i.exec(q)) || (m = /^where(?:'s|\s+is|\s+was)\s+(.+?)(?:\s+now)?$/i.exec(q))) {
-    if (!/\bon\s+(?:the|a)\s+map$/i.test(q)) return lastSeen(core, m[1] ?? "");
-  }
-  if ((m = /^where(?:'s|\s+is)\s+(.+?)\s+on\s+(?:the|a)\s+map$/i.exec(q)) || (m = /^(?:is\s+)?(.+?)\s+(?:pinned|on\s+the\s+map)$/i.exec(q))) {
-    return onMap(core, m[1] ?? "");
-  }
-  if ((m = /^(?:what(?:'s|\s+is)\s+set\s+(?:at|in)|what\s+happens\s+(?:at|in)|(?:which|what)\s+scenes\s+(?:are\s+)?(?:at|in|set\s+(?:at|in))|scenes\s+(?:at|in))\s+(.+)$/i.exec(q))) {
-    return setAt(core, m[1] ?? "");
-  }
-  if (/^(?:which|what)\s+(?:places|settings|locations)\s+(?:have|has|with)\s+no\s+scenes?$/i.test(q) || /^unused\s+(?:places|settings)$/i.test(q)) {
-    return unused(core, "setting");
-  }
-  if (/^(?:which|what|who)\s+(?:characters|people)\s+(?:have|has|with)\s+no\s+scenes?$/i.test(q) || /^unused\s+(?:characters|people)$/i.test(q)) {
-    return unused(core, "character");
-  }
-  if ((m = /^who(?:'s|\s+is|\s+appears|\s+was)\s+in\s+(.+)$/i.exec(q))) {
-    return whoIn(core, m[1] ?? "");
-  }
-  if ((m = /^(?:which|what)\s+scenes\s+(?:mention|name|could\s+be\s+(?:set\s+)?at|might\s+be\s+(?:set\s+)?at)\s+(.+)$/i.exec(q)) || (m = /^(?:audit|find\s+scenes\s+(?:that\s+)?mention(?:ing)?)\s+(.+)$/i.exec(q))) {
-    return audit(core, m[1] ?? "");
-  }
-  if ((m = /^how\s+(?:long|many\s+words)\s+(?:is|are|in)?\s*(.+)$/i.exec(q)) || (m = /^word\s*count(?:\s+(?:of|for))?\s+(.+)$/i.exec(q))) {
-    return length(core, m[1] ?? "");
-  }
-  return help();
+  return help(memory);
 }
 
 // ---- the answers ----
@@ -296,24 +305,15 @@ async function onMap(core: Core, name: string): Promise<Answer> {
   return { kind: "on-map", text: `${title} is on ${hits.map((h) => h.label).join(" and ")}.`, cites: hits };
 }
 
-function help(): Answer {
-  const lines = [
-    "I answer from your files. Ask me:",
-    "where was Mara last seen",
-    "what is set at Stillwater",
-    "which scenes mention Harrow Wood",
-    "who is in 03 Winter Fair",
-    "which places have no scene",
-    "how long is Part One",
-    "where is the house on the map",
-    "Reading the prose itself is the hosted Nib, which is off.",
-  ];
-  let text = lines.join("\n");
-  if (!jokeTold) {
-    jokeTold = true;
-    text += "\nIt looks like you're writing a novel. Would you like help with that? That was the one joke. It will not happen again.";
+function help(memory: Memory): Answer {
+  const lines = ["I answer from your files. Ask me:", ...ROUTES.map((r) => r.example), "Reading the prose itself is the hosted Nib, which is off."];
+  const answer: Answer = { kind: "help", text: lines.join("\n"), cites: [] };
+  if (!memory.jokeTold) {
+    memory.jokeTold = true;
+    answer.text += "\nIt looks like you're writing a novel. Would you like help with that? That was the one joke. It will not happen again.";
+    answer.joke = true;
   }
-  return { kind: "help", text, cites: [] };
+  return answer;
 }
 
 function unknown(name: string): Answer {

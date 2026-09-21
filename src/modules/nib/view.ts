@@ -8,37 +8,10 @@ import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import { projectPicker } from "../../core/picker.js";
 import { ask, perform, projectsToOpen, scopeOf, type Answer, type Cite, type Scope } from "./answers.js";
+import type { NibEvent, NibSession } from "./session.js";
 import { nudgesFor, type Nudge } from "./nudges.js";
 
 export const NIB_VIEW_TYPE = "longhand-nib";
-
-/** The open sidebar chat, if any, so the corner nib can hand it a question. */
-let live: { submit: (q: string) => Promise<void>; say: (text: string) => void } | null = null;
-/** A question waiting for the sidebar to mount, with what Nib said in the corner just before. */
-let pending: { question: string; preface: string | null } | null = null;
-/** Nudges already spoken this session, by key. Said once, then never again. */
-const spoken = new Set<string>();
-/** The conversation so far this session. The sidebar re-renders it whenever it mounts. */
-type Turn = { you: string; answer: Answer } | { nib: string };
-const history: Turn[] = [];
-
-/** Put a question to Nib in the sidebar, opening it if needed. `preface` is what Nib just said in the corner. */
-export async function askInSidebar(core: Core, question: string, contextPath = "", preface: string | null = null): Promise<void> {
-  const view = live;
-  if (view) {
-    if (preface) view.say(preface);
-    await core.host.openView(NIB_VIEW_TYPE, { path: contextPath });
-    await view.submit(question);
-    return;
-  }
-  pending = { question, preface };
-  await core.host.openView(NIB_VIEW_TYPE, { path: contextPath });
-}
-
-/** Test hook. */
-export function clearHistory(): void {
-  history.length = 0;
-}
 
 const NIB_MARK =
   '<svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="28,10 50,10 50,60 39,76 28,60" fill="currentColor"/><circle cx="39" cy="44" r="3.5" fill="var(--lh-paper)"/><line x1="39" y1="47" x2="39" y2="62" stroke="var(--lh-paper)" stroke-width="3"/><path d="M28 86 H 86" stroke="currentColor" stroke-width="9" stroke-linecap="round"/></svg>';
@@ -100,14 +73,9 @@ function nibCard(text: string): HTMLElement {
   return card;
 }
 
-/** What the sidebar tells the character: it is working, it has answered, it told the joke. */
-type NibEvent = "asking" | "answered" | "joke";
-const eventListeners = new Set<(e: NibEvent) => void>();
-function emit(e: NibEvent): void {
-  for (const l of eventListeners) l(e);
-}
 
-export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): ViewHandle {
+export function mountNibView(core: Core, el: HTMLElement, session: NibSession, contextPath = ""): ViewHandle {
+  const { history } = session;
   const root = document.createElement("div");
   root.className = "lh-root lh-nib";
   el.appendChild(root);
@@ -188,15 +156,15 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
     transcript.appendChild(card);
     transcript.scrollTop = transcript.scrollHeight;
     let answer: Answer;
-    emit("asking");
+    session.emit("asking");
     try {
-      answer = await ask(core, q);
+      answer = await ask(core, q, session);
     } catch (err) {
       console.error("[longhand] nib", err);
       answer = { kind: "help", text: "Something in the files would not read. The console has the detail.", cites: [] };
     }
     history.push({ you: q, answer });
-    emit(answer.text.includes("That was the one joke") ? "joke" : "answered");
+    session.emit(answer.joke ? "joke" : "answered");
     card.classList.remove("lh-nib-thinking");
     renderAnswer(card, answer);
     transcript.scrollTop = transcript.scrollHeight;
@@ -290,14 +258,14 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
 
   const unsubscribe = core.host.onFileChanged(() => void renderChips());
   const handle = { submit, say };
-  live = handle;
+  session.live = handle;
   replay();
   void greet()
     .then(renderChips)
     .then(() => {
-      if (pending) {
-        const p = pending;
-        pending = null;
+      if (session.pending) {
+        const p = session.pending;
+        session.pending = null;
         if (p.preface) say(p.preface);
         return submit(p.question);
       }
@@ -307,7 +275,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
 
   return {
     destroy() {
-      if (live === handle) live = null;
+      if (session.live === handle) session.live = null;
       unsubscribe();
       root.remove();
     },
@@ -371,7 +339,8 @@ export async function suggest(core: Core, contextPath = ""): Promise<string[]> {
  * view on screen it shows a badge and, on hover or click, a speech bubble with the observation,
  * a follow-up, and a question box. Asking hands the conversation to the sidebar; the nib stays.
  */
-export function mountNibDock(core: Core, el: HTMLElement, initialContext: string, follow = false): ViewHandle {
+export function mountNibDock(core: Core, el: HTMLElement, session: NibSession, initialContext: string, follow = false): ViewHandle {
+  const { spoken } = session;
   let contextPath = initialContext;
   const dock = document.createElement("div");
   dock.className = "lh-root lh-nib-dock" + (follow ? " lh-nib-dock-global" : "");
@@ -425,7 +394,7 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
     else if (e === "joke") setState("joke", 1400);
     else setState("found", 1100);
   };
-  eventListeners.add(onEvent);
+  const offEvent = session.on(onEvent);
 
   const bubble = document.createElement("div");
   bubble.className = "lh-nib-bubble";
@@ -547,7 +516,7 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
     current = null;
     hide();
     renderBubble();
-    await askInSidebar(core, question, contextPath, preface);
+    await session.askInSidebar(core, NIB_VIEW_TYPE, question, contextPath, preface);
   };
 
   button.addEventListener("click", () => {
@@ -604,7 +573,7 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
       unsubscribe();
       unfollow();
       if (lookTimer) clearTimeout(lookTimer);
-      eventListeners.delete(onEvent);
+      offEvent();
       eyeSurface.removeEventListener("pointermove", onMove as EventListener);
       window.removeEventListener("resize", forgetEyeRect);
       if (eyeFrame !== null) cancelAnimationFrame(eyeFrame);
