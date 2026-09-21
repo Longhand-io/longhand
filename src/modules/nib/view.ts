@@ -390,21 +390,32 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
   const setState = (s: NibState, thenRestAfterMs?: number) => {
     if (stateTimer) clearTimeout(stateTimer);
     stateTimer = null;
+    eyeRect = null;
     for (const x of STATES) button.classList.remove(`lh-nc-${x}`);
     void button.offsetWidth; // restart one-shot animations
     button.classList.add(`lh-nc-${s}`);
     if (thenRestAfterMs) stateTimer = setTimeout(() => setState(restingState()), thenRestAfterMs);
   };
   const pupils = button.querySelectorAll<SVGElement>(".lh-nc-pupil");
+  let eyeFrame: number | null = null;
+  let eyeRect: DOMRect | null = null;
   const onMove = (ev: PointerEvent) => {
-    if (button.classList.contains("lh-nc-idle")) return;
-    const r = button.getBoundingClientRect();
-    const dx = ev.clientX - (r.left + r.width * 0.39);
-    const dy = ev.clientY - (r.top + r.height * 0.27);
-    const len = Math.hypot(dx, dy) || 1;
-    const reach = Math.min(1, len / 240) * 2.2;
-    for (const p of pupils) p.style.transform = `translate(${(dx / len) * reach}px, ${(dy / len) * reach}px)`;
+    if (button.classList.contains("lh-nc-idle") || eyeFrame !== null) return;
+    const { clientX, clientY } = ev;
+    eyeFrame = requestAnimationFrame(() => {
+      eyeFrame = null;
+      const r = (eyeRect ??= button.getBoundingClientRect());
+      const dx = clientX - (r.left + r.width * 0.39);
+      const dy = clientY - (r.top + r.height * 0.27);
+      const len = Math.hypot(dx, dy) || 1;
+      const reach = Math.min(1, len / 240) * 2.2;
+      for (const p of pupils) p.style.transform = `translate(${(dx / len) * reach}px, ${(dy / len) * reach}px)`;
+    });
   };
+  const forgetEyeRect = () => {
+    eyeRect = null;
+  };
+  window.addEventListener("resize", forgetEyeRect);
   const onLeave = () => {
     for (const p of pupils) p.style.transform = "";
   };
@@ -491,6 +502,7 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
   };
 
   const look = async () => {
+    const generation = ++lookGeneration;
     const scope = await scopeOf(core, contextPath || null);
     openChips.replaceChildren();
     greeting = await greetingFor(core, scope, contextPath, "corner");
@@ -510,6 +522,7 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
     } catch (err) {
       console.error("[longhand] nib nudges", err);
     }
+    if (generation !== lookGeneration) return; // a newer look is on its way
     const before = current?.key ?? null;
     current = nudges.find((n) => !spoken.has(n.key)) ?? null;
     renderBubble();
@@ -568,7 +581,16 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
     if (ev.key === "Escape" && !bubble.hidden) hide();
   });
 
-  const unsubscribe = core.host.onFileChanged(() => void look());
+  let lookTimer: ReturnType<typeof setTimeout> | null = null;
+  let lookGeneration = 0;
+  const lookSoon = () => {
+    if (lookTimer) clearTimeout(lookTimer);
+    lookTimer = setTimeout(() => void look(), 300);
+  };
+  const unsubscribe = core.host.onFileChanged((change) => {
+    if (!change.path.toLowerCase().endsWith(".md")) return;
+    lookSoon();
+  });
   const unfollow = follow
     ? core.host.onActiveFileChanged((path) => {
         if ((path ?? "") === contextPath) return;
@@ -583,8 +605,11 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
     destroy() {
       unsubscribe();
       unfollow();
+      if (lookTimer) clearTimeout(lookTimer);
       eventListeners.delete(onEvent);
       eyeSurface.removeEventListener("pointermove", onMove as EventListener);
+      window.removeEventListener("resize", forgetEyeRect);
+      if (eyeFrame !== null) cancelAnimationFrame(eyeFrame);
       eyeSurface.removeEventListener("pointerleave", onLeave);
       if (hideTimer) clearTimeout(hideTimer);
       if (popTimer) clearTimeout(popTimer);

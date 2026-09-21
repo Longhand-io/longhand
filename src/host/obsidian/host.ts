@@ -41,8 +41,11 @@ export class ObsidianHost implements Host {
     plugin.registerEvent(this.app.vault.on("delete", (f) => emit({ kind: "delete", path: f.path })));
     plugin.registerEvent(this.app.vault.on("rename", (f, old) => emit({ kind: "rename", path: f.path, oldPath: old })));
     plugin.registerEvent(this.app.workspace.on("file-open", (file) => void this.maybeSwap(file)));
+    let lastActive: string | null | undefined;
     const active = () => {
       const path = this.activeFile();
+      if (path === lastActive) return;
+      lastActive = path;
       for (const l of this.activeListeners) l(path);
     };
     plugin.registerEvent(this.app.workspace.on("file-open", active));
@@ -98,10 +101,10 @@ export class ObsidianHost implements Host {
     return f instanceof TFile ? f : null;
   }
 
-  async readFile(path: string): Promise<string> {
+  async readFile(path: string, fresh = false): Promise<string> {
     const f = this.file(path);
     if (!f) throw new Error(`no such file: ${path}`);
-    return this.app.vault.read(f);
+    return fresh ? this.app.vault.read(f) : this.app.vault.cachedRead(f);
   }
 
   async writeFile(path: string, text: string): Promise<void> {

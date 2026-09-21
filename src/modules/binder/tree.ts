@@ -9,7 +9,6 @@ import * as fm from "../../core/frontmatter.js";
 import type { Core } from "../../core/modules.js";
 import { safeName, splitPrefix } from "../../core/naming.js";
 import type { Document } from "../../core/spec.js";
-import { words } from "../../core/text.js";
 
 export interface Node {
   /** vault path of the file, or of the folder */
@@ -20,8 +19,9 @@ export interface Node {
   kind: "folder" | "doc";
   type: string | null;
   doc: Document | null;
-  /** the folder's own note, when it has one */
+  /** the folder's own note, when it has one, and its words */
   note: Document | null;
+  noteWords: number;
   children: Node[];
   words: number;
   status: string | null;
@@ -33,7 +33,7 @@ export { splitPrefix };
 /** Build the tree for a project root from its documents in binder order. */
 export async function buildTree(core: Core, root: string): Promise<Node> {
   const docs = await core.projects.documents(root);
-  const top: Node = { path: root, name: root, prefix: "", kind: "folder", type: null, doc: null, note: null, children: [], words: 0, status: null, label: null };
+  const top: Node = { path: root, name: root, prefix: "", kind: "folder", type: null, doc: null, note: null, noteWords: 0, children: [], words: 0, status: null, label: null };
   const folders = new Map<string, Node>([[root, top]]);
   const folderFor = (path: string): Node => {
     const existing = folders.get(path);
@@ -42,7 +42,7 @@ export async function buildTree(core: Core, root: string): Promise<Node> {
     const parent = folderFor(slash >= 0 ? path.slice(0, slash) : "");
     const base = slash >= 0 ? path.slice(slash + 1) : path;
     const { prefix, rest } = splitPrefix(base);
-    const node: Node = { path, name: rest, prefix, kind: "folder", type: "folder", doc: null, note: null, children: [], words: 0, status: null, label: null };
+    const node: Node = { path, name: rest, prefix, kind: "folder", type: "folder", doc: null, note: null, noteWords: 0, children: [], words: 0, status: null, label: null };
     parent.children.push(node);
     folders.set(path, node);
     return node;
@@ -54,12 +54,13 @@ export async function buildTree(core: Core, root: string): Promise<Node> {
     const parent = folderFor(dir);
     const { prefix, rest } = splitPrefix(base);
     const folderBase = dir.slice(dir.lastIndexOf("/") + 1);
-    const count = doc.type === "text" || doc.type === null || doc.type === "folder" ? words(doc.fields.body) : 0;
+    const count = doc.type === "text" || doc.type === null || doc.type === "folder" ? await core.projects.wordsOf(doc.path) : 0;
     const status = str(fm.get(doc.fields, "status"));
     const label = str(fm.get(doc.fields, "label"));
     if (base === folderBase && parent !== top) {
       // the folder's own note; its words are added in the roll-up below
       parent.note = doc;
+      parent.noteWords = count;
       parent.status = status;
       parent.label = label;
       continue;
@@ -72,6 +73,7 @@ export async function buildTree(core: Core, root: string): Promise<Node> {
       type: doc.type,
       doc,
       note: null,
+      noteWords: 0,
       children: [],
       words: count,
       status,
@@ -83,7 +85,7 @@ export async function buildTree(core: Core, root: string): Promise<Node> {
   const rollUp = (n: Node) => {
     if (n.kind !== "folder") return;
     for (const c of n.children) rollUp(c);
-    n.words = n.children.reduce((sum, c) => sum + c.words, n.note ? words(n.note.fields.body) : 0);
+    n.words = n.children.reduce((sum, c) => sum + c.words, n.noteWords);
   };
   rollUp(top);
   return top;

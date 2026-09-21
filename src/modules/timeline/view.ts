@@ -308,22 +308,27 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
 
   /** Pins that would overlap in a track go to the next row down; the track grows to fit. */
   const layoutPins = () => {
-    for (const track of board.querySelectorAll<HTMLElement>(".lh-tl-track:not(.lh-tl-track-written)")) {
-      const pins = [...track.querySelectorAll<HTMLElement>(".lh-tl-pin")].sort((a, b) => parseFloat(a.style.left) - parseFloat(b.style.left));
+    // read every measurement first, then write, so the browser lays out once, not once per pin
+    const tracks = [...board.querySelectorAll<HTMLElement>(".lh-tl-track:not(.lh-tl-track-written)")].map((track) => {
+      const rect = track.getBoundingClientRect();
+      const pins = [...track.querySelectorAll<HTMLElement>(".lh-tl-pin")]
+        .map((pin) => {
+          const tag = pin.querySelector<HTMLElement>(".lh-tl-tag");
+          return { pin, left: parseFloat(pin.style.left), width: tag ? tag.getBoundingClientRect().width : 80 };
+        })
+        .sort((a, b) => a.left - b.left);
+      return { track, rect, pins };
+    });
+    for (const { track, rect, pins } of tracks) {
       const rowEnds: number[] = [];
-      const trackRect = track.getBoundingClientRect();
-      for (const pin of pins) {
-        pin.style.top = "";
-        const tag = pin.querySelector<HTMLElement>(".lh-tl-tag");
-        const width = tag ? tag.getBoundingClientRect().width : 80;
-        const centre = trackRect.left + (parseFloat(pin.style.left) / 100) * trackRect.width;
-        const left = centre - width / 2;
-        let row = rowEnds.findIndex((end) => end + 8 <= left);
+      for (const { pin, left, width } of pins) {
+        const start = rect.left + (left / 100) * rect.width - width / 2;
+        let row = rowEnds.findIndex((end) => end + 8 <= start);
         if (row < 0) {
           row = rowEnds.length;
           rowEnds.push(0);
         }
-        rowEnds[row] = left + width;
+        rowEnds[row] = start + width;
         pin.style.top = `${1.9 + row * 2.3}rem`;
         pin.style.setProperty("--row", String(row));
         pin.dataset["row"] = String(row);
@@ -331,7 +336,13 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
       track.style.height = `${2.6 + Math.max(1, rowEnds.length) * 2.3}rem`;
     }
   };
-  const resize = new ResizeObserver(() => layoutPins());
+  let lastWidth = 0;
+  const resize = new ResizeObserver((entries) => {
+    const w = entries[0]?.contentRect.width ?? 0;
+    if (w === lastWidth) return;
+    lastWidth = w;
+    layoutPins();
+  });
   resize.observe(board);
 
   const pinFor = (item: Item, color: number | null): HTMLElement => {

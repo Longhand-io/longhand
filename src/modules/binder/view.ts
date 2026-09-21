@@ -166,8 +166,10 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
     return p;
   };
 
-  const unsubFiles = core.host.onFileChanged(() => {
-    if (!writing) void render();
+  const unsubFiles = core.host.onFileChanged((change) => {
+    if (writing) return;
+    const inProject = (p?: string) => !!p && (projectRoot === null || projectRoot === "" || p === projectRoot || p.startsWith(projectRoot + "/"));
+    if (inProject(change.path) || inProject(change.oldPath) || change.path.endsWith("/_Project.md") || change.path === "_Project.md") void render();
   });
   const unsubActive = core.host.onActiveFileChanged((path) => {
     if (path && path.endsWith(".md")) {

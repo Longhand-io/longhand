@@ -344,7 +344,7 @@ async function scopeRoot(core: Core): Promise<string> {
 
 /** A note by title, alias, or file name, case-insensitively; exact matches first, then a contains match. */
 export async function findNote(core: Core, name: string): Promise<Document | null> {
-  const norm = (s: string) => s.trim().toLowerCase().replace(/^(?:the\s+)/, "");
+  const norm = (s: string) => stripPrefix(s.trim()).toLowerCase().replace(/^(?:the\s+)/, "");
   const n = norm(name);
   if (!n) return null;
   const root = await scopeRoot(core);

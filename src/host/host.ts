@@ -69,7 +69,8 @@ export interface Host {
   readonly isMobile: boolean;
 
   // files
-  readFile(path: string): Promise<string>;
+  /** the note's text; `fresh` bypasses any host cache, for a read that precedes a write */
+  readFile(path: string, fresh?: boolean): Promise<string>;
   writeFile(path: string, text: string): Promise<void>;
   exists(path: string): boolean;
   createFolder(path: string): Promise<void>;

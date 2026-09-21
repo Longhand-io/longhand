@@ -6,8 +6,10 @@
 // `order` field, then name. Ids come from frontmatter and are cached until the host reports
 // a change.
 
-import type { Host } from "../host/host.js";
+import type { FileChange, Host } from "../host/host.js";
+import * as fm from "./frontmatter.js";
 import { SPEC_VERSION, Spec, type Document } from "./spec.js";
+import { words } from "./text.js";
 
 export const PROJECT_NOTE = "_Project.md";
 const HIDDEN_DIRS = new Set(["_snapshots", "_attachments"]);
@@ -21,23 +23,53 @@ export interface Project {
 
 export class Projects {
   private index: Map<string, Document> | null = null;
+  /** paths whose index entry is stale and is re-read on the next use */
+  private stale = new Set<string>();
+  private rootsCache: Project[] | null = null;
+  private docsCache = new Map<string, Document[]>();
+  /** per-path values computed from a document, dropped when that path changes */
+  private derivedCache = new Map<string, Map<string, unknown>>();
   private warned = new Set<string>();
 
   constructor(
     private readonly host: Host,
     private readonly spec: Spec,
   ) {
-    host.onFileChanged(() => {
+    host.onFileChanged((c) => this.changed(c));
+  }
+
+  /** One file changed: forget only what depended on it. */
+  private changed(c: FileChange): void {
+    const isNote = (p: string | undefined) => !!p && p.toLowerCase().endsWith(".md");
+    if (c.kind === "rename" && c.oldPath && !isNote(c.oldPath) && !isNote(c.path)) {
+      // a folder moved: every path under it changed without its own event
       this.index = null;
-    });
+      this.stale.clear();
+      this.derivedCache.clear();
+    } else if (isNote(c.path) || isNote(c.oldPath)) {
+      for (const m of this.derivedCache.values()) {
+        m.delete(c.path);
+        if (c.oldPath) m.delete(c.oldPath);
+      }
+      if (this.index) {
+        if (c.oldPath) this.index.delete(c.oldPath);
+        if (c.kind === "delete") this.index.delete(c.path);
+        else this.stale.add(c.path);
+      }
+    } else return;
+    this.rootsCache = null;
+    this.docsCache.clear();
   }
 
   async roots(): Promise<Project[]> {
+    if (this.rootsCache) return this.rootsCache;
     const out: Project[] = [];
-    for (const path of this.host.listFiles()) {
+    for (const doc of (await this.ensureIndex()).values()) {
+      const path = doc.path;
       if (path !== PROJECT_NOTE && !path.endsWith("/" + PROJECT_NOTE)) continue;
       const root = path === PROJECT_NOTE ? "" : path.slice(0, -PROJECT_NOTE.length - 1);
-      const version = this.spec.projectVersion(await this.host.readFile(path));
+      const raw = fm.get(doc.fields, "longhand");
+      const version = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" && Number.isFinite(Number(raw)) ? Number(raw) : null;
       if (version !== null && version > SPEC_VERSION && !this.warned.has(path)) {
         this.warned.add(path);
         this.host.notify(
@@ -46,7 +78,28 @@ export class Projects {
       }
       out.push({ root, notePath: path, version });
     }
-    return out.sort((a, b) => a.root.localeCompare(b.root));
+    this.rootsCache = out.sort((a, b) => a.root.localeCompare(b.root));
+    return this.rootsCache;
+  }
+
+  /** A value computed from one document, cached until that document changes. */
+  async derived<T>(name: string, path: string, compute: (doc: Document) => T): Promise<T | null> {
+    let m = this.derivedCache.get(name);
+    if (!m) {
+      m = new Map();
+      this.derivedCache.set(name, m);
+    }
+    if (m.has(path)) return m.get(path) as T;
+    const doc = await this.byPath(path);
+    if (!doc) return null;
+    const v = compute(doc);
+    m.set(path, v);
+    return v;
+  }
+
+  /** The document's word count, cached until it changes. */
+  async wordsOf(path: string): Promise<number> {
+    return (await this.derived("words", path, (d) => words(d.fields.body))) ?? 0;
   }
 
   /** The innermost project a path belongs to, or null. */
@@ -62,13 +115,17 @@ export class Projects {
 
   /** Every Markdown document under a project root, in binder order. */
   async documents(root: string): Promise<Document[]> {
+    const cached = this.docsCache.get(root);
+    if (cached) return cached;
     const index = await this.ensureIndex();
     const docs: Document[] = [];
     for (const doc of index.values()) {
       if (!inRoot(doc.path, root) || isHidden(doc.path, root)) continue;
       docs.push(doc);
     }
-    return docs.sort((a, b) => compareBinder(a, b, root));
+    docs.sort((a, b) => compareBinder(a, b, root));
+    this.docsCache.set(root, docs);
+    return docs;
   }
 
   async byId(id: string): Promise<Document | null> {
@@ -83,14 +140,23 @@ export class Projects {
   }
 
   private async ensureIndex(): Promise<Map<string, Document>> {
-    if (this.index) return this.index;
+    if (this.index) {
+      for (const path of this.stale) {
+        try {
+          this.index.set(path, this.spec.fromText(path, await this.host.readFile(path)));
+        } catch {
+          this.index.delete(path);
+        }
+      }
+      this.stale.clear();
+      return this.index;
+    }
     const index = new Map<string, Document>();
     const files = this.host.listFiles();
     for (const path of files) {
       if (!path.toLowerCase().endsWith(".md")) continue;
       try {
-        const text = await this.host.readFile(path);
-        index.set(path, this.spec.fromText(path, text));
+        index.set(path, this.spec.fromText(path, await this.host.readFile(path)));
       } catch {
         // a file that vanished between listing and reading; skip it
       }

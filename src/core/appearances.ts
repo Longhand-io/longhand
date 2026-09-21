@@ -99,9 +99,9 @@ async function scan(core: Core, subject: Subject, mode: Mode): Promise<Appearanc
   for (const doc of docs) {
     if (doc.path === subject.path) continue;
     if (doc.type && !(doc.type === "text" || doc.type === "folder")) continue;
-    const text = await core.host.readFile(doc.path);
-    const body = fm.parse(text).body;
-    const { plain, links } = flatten(body, doc.path, core, subject.path);
+    const flat = await flattened(core, doc);
+    const plain = flat.plain;
+    const links = flat.links.filter((l) => l.resolved === subject.path);
     let start = -1;
     let end = -1;
     let sentence: { text: string; start: number; end: number } | null = null;
@@ -143,14 +143,19 @@ export function placesLinkTo(core: Core, doc: Document, subjectPath: string): bo
 
 interface Flattened {
   plain: string;
-  /** ranges in `plain` of links that resolve to the target */
-  links: { start: number; end: number }[];
+  /** every wikilink in the body: where its display text sits in `plain` and the path it resolves to */
+  links: { start: number; end: number; resolved: string | null }[];
 }
 
 const WIKILINK = /!?\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g;
 
-/** Markdown to plain text with wikilinks shown as their display text, recording links to the target. */
-export function flatten(body: string, from: string, core: Core, targetPath: string): Flattened {
+/** A document's body as plain text with every link resolved, cached until the document changes. */
+async function flattened(core: Core, doc: Document): Promise<Flattened> {
+  return (await core.projects.derived("flat", doc.path, (d) => flatten(d.fields.body, d.path, core))) ?? { plain: "", links: [] };
+}
+
+/** Markdown to plain text with wikilinks shown as their display text, recording where each link resolves. */
+export function flatten(body: string, from: string, core: Core): Flattened {
   let text = body
     .replace(/%%[\s\S]*?%%/g, "")
     .replace(/^>\s*\[![^\]]*\][^\n]*$/gm, "")
@@ -160,15 +165,14 @@ export function flatten(body: string, from: string, core: Core, targetPath: stri
     .replace(/\[\^[^\]]+\](?::.*)?/g, "")
     .replace(/\*\*|__|\*|~~/g, "");
   let plain = "";
-  const links: { start: number; end: number }[] = [];
+  const links: Flattened["links"] = [];
   let last = 0;
   for (const m of text.matchAll(WIKILINK)) {
     const idx = m.index ?? 0;
     plain += text.slice(last, idx);
     const target = (m[1] ?? "").trim();
     const display = m[2] !== undefined && m[2] !== "" ? m[2] : baseName(target);
-    const resolved = core.host.resolveLink(target, from);
-    if (resolved === targetPath) links.push({ start: plain.length, end: plain.length + display.length });
+    links.push({ start: plain.length, end: plain.length + display.length, resolved: core.host.resolveLink(target, from) });
     plain += display;
     last = idx + m[0].length;
   }

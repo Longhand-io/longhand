@@ -134,7 +134,7 @@ export class Spec {
 
   /** Write one field and save. Returns false when nothing changed. */
   async setField(path: string, key: string, value: Value | undefined): Promise<boolean> {
-    const before = await this.host.readFile(path);
+    const before = await this.host.readFile(path, true);
     const fields = fm.parse(before);
     fm.set(fields, key, value);
     const after = fm.serialize(fields);

@@ -547,14 +547,17 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   stage.addEventListener("pointermove", clearPress);
   stage.addEventListener("pointercancel", clearPress);
 
+  let cardTimer: ReturnType<typeof setTimeout> | null = null;
   const unsubscribe = core.host.onFileChanged((change) => {
     if (writing) return;
     if (change.path === path || (current?.imagePath && change.path === current.imagePath)) {
       void render();
       return;
     }
-    // any other note may have gained or lost a mention
-    invalidateCards();
+    // another note in this project may have gained or lost a mention; refresh after a beat
+    if (!change.path.toLowerCase().endsWith(".md")) return;
+    if (cardTimer) clearTimeout(cardTimer);
+    cardTimer = setTimeout(invalidateCards, 300);
   });
 
   setTool("select");
@@ -564,6 +567,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     destroy() {
       disposed = true;
       cancelHide();
+      if (cardTimer) clearTimeout(cardTimer);
       unsubscribe();
       layer.destroy();
       root.remove();
