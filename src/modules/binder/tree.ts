@@ -8,7 +8,7 @@
 import * as fm from "../../core/frontmatter.js";
 import type { Core } from "../../core/modules.js";
 import { safeName, splitPrefix } from "../../core/naming.js";
-import type { Document } from "../../core/spec.js";
+import { isProse, type Document } from "../../core/spec.js";
 
 export interface Node {
   /** vault path of the file, or of the folder */
@@ -54,7 +54,7 @@ export async function buildTree(core: Core, root: string): Promise<Node> {
     const parent = folderFor(dir);
     const { prefix, rest } = splitPrefix(base);
     const folderBase = dir.slice(dir.lastIndexOf("/") + 1);
-    const count = doc.type === "text" || doc.type === null || doc.type === "folder" ? await core.projects.wordsOf(doc.path) : 0;
+    const count = isProse(doc) ? await core.projects.wordsOf(doc.path) : 0;
     const status = str(fm.get(doc.fields, "status"));
     const label = str(fm.get(doc.fields, "label"));
     if (base === folderBase && parent !== top) {

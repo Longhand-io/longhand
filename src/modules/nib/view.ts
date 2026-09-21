@@ -6,8 +6,8 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import { projectPicker, rememberProject } from "../../core/picker.js";
-import { ask, chooseScope, perform, projectsToOpen, scopeOf, type Answer, type Cite, type Scope } from "./answers.js";
+import { projectPicker } from "../../core/picker.js";
+import { ask, perform, projectsToOpen, scopeOf, type Answer, type Cite, type Scope } from "./answers.js";
 import { nudgesFor, type Nudge } from "./nudges.js";
 
 export const NIB_VIEW_TYPE = "longhand-nib";
@@ -124,8 +124,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   title.appendChild(sub);
   head.appendChild(title);
   // which project Nib looks at; follows the note you open, or your pick here
-  const picker = projectPicker(core, (c) => {
-    chooseScope(c.root);
+  const picker = projectPicker(core, () => {
     void renderChips();
     void updateScopeLine();
   });
@@ -261,7 +260,6 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
     const scope = await scopeOf(core, contextPath || core.host.activeFile());
     sub.textContent =
       scope.kind === "project" ? `Looking at ${scope.title}. Off the network.` : scope.kind === "vault" ? "Looking across the whole vault. Off the network." : "Nothing is open. Off the network.";
-    if (scope.kind === "project") rememberProject(scope.root);
     await picker.refresh(scope.kind === "project" ? scope.root : null);
     return scope;
   };

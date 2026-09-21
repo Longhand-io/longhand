@@ -6,28 +6,31 @@
 // in the project, gets the next number when its siblings are numbered, and opens.
 
 import type { Core, Module } from "../../core/modules.js";
-import type { NoteType } from "../../core/spec.js";
+import { isProse, type NoteType } from "../../core/spec.js";
 import { childrenOf, dirOf, newId, nextName, nowIso, safeName, uniquePath } from "../../core/naming.js";
 import { newMapNote } from "../map/model.js";
 import { mountBinderView } from "./view.js";
 
-export const MAP_VIEW_TYPE = "longhand-map";
 export const BINDER_VIEW = "longhand-binder";
 
+export type NewKindId = "scene" | "folder" | "character" | "setting" | "event" | "map" | "project";
+
 export interface NewKind {
-  id: NoteType;
+  id: NewKindId;
+  /** the frontmatter type the new note gets; none for a folder or a project */
+  type: NoteType | null;
   label: string;
   description: string;
 }
 
 export const KINDS: NewKind[] = [
-  { id: "text", label: "Scene", description: "A document in the manuscript, next to the one you are in" },
-  { id: "folder", label: "Folder", description: "A chapter or part, next to the one you are in" },
-  { id: "character", label: "Character", description: "Someone the manuscript can link to; the cast panel counts their scenes" },
-  { id: "setting", label: "Setting", description: "A place that is not a map; pins and shapes can point at it" },
-  { id: "event", label: "Event", description: "Something on the timeline that is not a scene" },
-  { id: "map", label: "Map", description: "A picture or a blank canvas with pins and shapes" },
-  { id: "folder", label: "Project", description: "A new book: a folder with a project note and a Manuscript folder" },
+  { id: "scene", type: "text", label: "Scene", description: "A document in the manuscript, next to the one you are in" },
+  { id: "folder", type: null, label: "Folder", description: "A chapter or part, next to the one you are in" },
+  { id: "character", type: "character", label: "Character", description: "Someone the manuscript can link to; the cast panel counts their scenes" },
+  { id: "setting", type: "setting", label: "Setting", description: "A place that is not a map; pins and shapes can point at it" },
+  { id: "event", type: "event", label: "Event", description: "Something on the timeline that is not a scene" },
+  { id: "map", type: "map", label: "Map", description: "A picture or a blank canvas with pins and shapes" },
+  { id: "project", type: null, label: "Project", description: "A new book: a folder with a project note and a Manuscript folder" },
 ];
 
 export const binderModule: Module = {
@@ -64,16 +67,16 @@ export const binderModule: Module = {
       await host.openNoteAsMarkdown(`${root}/Manuscript/01 Chapter One.md`);
     };
 
-    const create = async (kind: NoteType, atFolder?: string, label?: string) => {
-      if (label === "Project") return createProject(atFolder);
-      const title = await host.prompt(`${KINDS.find((k) => k.id === kind)?.label ?? "Note"} title`, "");
+    const create = async (kind: NewKind, atFolder?: string) => {
+      if (kind.id === "project") return createProject(atFolder);
+      const title = await host.prompt(`${kind.label} title`, "");
       if (!title) return;
-      const folder = atFolder !== undefined ? atFolder : await placeFor(core, kind);
+      const folder = atFolder !== undefined ? atFolder : await placeFor(core, kind.id);
       const siblings = childrenOf(host.listFiles(), folder);
       const name = nextName(siblings, title);
       const prefix = folder === "" ? "" : `${folder}/`;
 
-      if (kind === "folder") {
+      if (kind.id === "folder") {
         const path = uniquePath(host.exists.bind(host), `${prefix}${name}`);
         await host.createFolder(path);
         host.notify(`Created ${path}`);
@@ -81,13 +84,13 @@ export const binderModule: Module = {
       }
 
       const path = uniquePath(host.exists.bind(host), `${prefix}${name}.md`);
-      if (kind === "map") {
+      if (kind.id === "map") {
         const image = await host.pickFile("image", "Use an image, or press Escape for a blank canvas");
         await host.writeFile(path, newMapNote(core, title, image, path));
-        await host.openView(MAP_VIEW_TYPE, { path });
+        await host.openNote(path); // a map note opens as a map
         return;
       }
-      const fields: { [k: string]: string } = { id: newId(), type: kind, title, created: nowIso() };
+      const fields: { [k: string]: string } = { id: newId(), type: kind.type ?? "text", title, created: nowIso() };
       await host.writeFile(path, core.spec.newNote(fields, ""));
       await host.openNoteAsMarkdown(path);
     };
@@ -103,16 +106,16 @@ export const binderModule: Module = {
       name: "New…",
       run: async () => {
         const kind = await pickKind();
-        if (kind) await create(kind.id, undefined, kind.label);
+        if (kind) await create(kind);
       },
     });
     for (const k of KINDS) {
       if (k.id === "map") continue; // the map module owns New map
-      host.registerCommand({ id: `new-${k.label.toLowerCase()}`, name: `New ${k.label.toLowerCase()}`, run: () => create(k.id, undefined, k.label) });
+      host.registerCommand({ id: `new-${k.id}`, name: `New ${k.label.toLowerCase()}`, run: () => create(k) });
     }
     host.registerRibbon("file-plus", "New scene, folder, character, setting, event, map, or project", async () => {
       const kind = await pickKind();
-      if (kind) await create(kind.id, undefined, kind.label);
+      if (kind) await create(kind);
     });
     host.registerFileMenu({
       label: "New here…",
@@ -121,7 +124,7 @@ export const binderModule: Module = {
       check: () => true,
       run: async (folder) => {
         const kind = await pickKind();
-        if (kind) await create(kind.id, folder === "/" ? "" : folder, kind.label);
+        if (kind) await create(kind, folder === "/" ? "" : folder);
       },
     });
   },
@@ -132,13 +135,13 @@ export const binderModule: Module = {
  * when it is in a project, else in the project's manuscript folder. Characters, settings,
  * and events go where the project already keeps that kind, else Research. Maps go to Maps.
  */
-export async function placeFor(core: Core, kind: NoteType): Promise<string> {
+export async function placeFor(core: Core, kind: NewKindId): Promise<string> {
   const active = core.host.activeFile();
-  const project = active ? await core.projects.projectOf(active) : (await core.projects.roots())[0] ?? null;
+  const project = await core.projects.current();
   const root = project ? project.root : "";
   const under = (name: string) => (root === "" ? name : `${root}/${name}`);
 
-  if (kind === "text" || kind === "folder") {
+  if (kind === "scene" || kind === "folder") {
     if (active && project) {
       const dir = dirOf(active);
       const rel = root === "" ? dir : dir.slice(root.length + 1);
@@ -149,7 +152,8 @@ export async function placeFor(core: Core, kind: NoteType): Promise<string> {
   if (kind === "map") return under("Maps");
 
   const docs = await core.projects.documents(root);
-  const last = [...docs].reverse().find((d) => d.type === kind);
+  const type = KINDS.find((k) => k.id === kind)?.type ?? null;
+  const last = [...docs].reverse().find((d) => d.type === type);
   if (last) return dirOf(last.path);
   return under("Research");
 }
@@ -159,7 +163,7 @@ async function manuscriptFolder(core: Core, root: string): Promise<string> {
   const docs = await core.projects.documents(root);
   const counts = new Map<string, number>();
   for (const d of docs) {
-    if (d.type !== "text" && d.type !== "folder" && d.type !== null) continue;
+    if (!isProse(d)) continue;
     const rel = root === "" ? d.path : d.path.slice(root.length + 1);
     const top = rel.split("/")[0] ?? "";
     if (!rel.includes("/")) continue;

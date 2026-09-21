@@ -39,12 +39,12 @@ test("placement: scenes next to the active scene, else the manuscript folder wha
   const host = vault();
   const core = createCore(host);
   host.active = "Novel/Draft/02 Part Two/01 Return.md";
-  assert.equal(await placeFor(core, "text"), "Novel/Draft/02 Part Two");
+  assert.equal(await placeFor(core, "scene"), "Novel/Draft/02 Part Two");
   assert.equal(await placeFor(core, "folder"), "Novel/Draft/02 Part Two");
   host.active = "Novel/Research/Gazette.md";
-  assert.equal(await placeFor(core, "text"), "Novel/Research");
+  assert.equal(await placeFor(core, "scene"), "Novel/Research");
   host.active = "Novel/_Project.md";
-  assert.equal(await placeFor(core, "text"), "Novel/Draft");
+  assert.equal(await placeFor(core, "scene"), "Novel/Draft");
 });
 
 test("placement: characters and settings go where the project already keeps them, else Research; maps to Maps", async () => {

@@ -187,15 +187,14 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     onLeave: () => scheduleHide(),
     promptText: () => core.host.prompt("Label", ""),
     newId: () => model.newShapeId(),
-    onDone: () => setTool("select"),
+    onToolChange: (tool) => {
+      for (const [id, b] of toolButtons) b.classList.toggle("lh-map-tool-active", id === tool);
+      hint.textContent = TOOLS.find((t) => t.id === tool)?.hint ?? "";
+      root.focus({ preventScroll: true });
+    },
   });
 
-  const setTool = (tool: Tool) => {
-    layer.setTool(tool);
-    for (const [id, b] of toolButtons) b.classList.toggle("lh-map-tool-active", id === tool);
-    hint.textContent = TOOLS.find((t) => t.id === tool)?.hint ?? "";
-    root.focus({ preventScroll: true });
-  };
+  const setTool = (tool: Tool) => layer.setTool(tool);
 
   const showProps = (shape: Shape | null) => {
     props.hidden = !shape;

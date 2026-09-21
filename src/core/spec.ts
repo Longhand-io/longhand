@@ -12,6 +12,29 @@ export const SPEC_VERSION = 1;
 
 export type NoteType = "text" | "folder" | "pdf" | "image" | "web" | "other" | "event" | "character" | "setting" | "map";
 
+/** What each note type is, as a writer names it, and whether it carries prose. */
+export const NOTE_TYPES: { id: NoteType; label: string; prose: boolean }[] = [
+  { id: "text", label: "Scene", prose: true },
+  { id: "folder", label: "Folder", prose: true },
+  { id: "character", label: "Character", prose: false },
+  { id: "setting", label: "Place", prose: false },
+  { id: "event", label: "Event", prose: false },
+  { id: "map", label: "Map", prose: false },
+  { id: "pdf", label: "Research", prose: false },
+  { id: "image", label: "Image", prose: false },
+  { id: "web", label: "Web page", prose: false },
+  { id: "other", label: "Research", prose: false },
+];
+
+/** A document that carries manuscript prose: a scene, a folder note, or a note with no type. */
+export function isProse(doc: { type: NoteType | null }): boolean {
+  return doc.type === null || NOTE_TYPES.find((t) => t.id === doc.type)?.prose === true;
+}
+
+export function typeLabel(type: NoteType | null): string {
+  return NOTE_TYPES.find((t) => t.id === type)?.label ?? "Note";
+}
+
 export interface Document {
   path: string;
   id: string | null;

@@ -9,7 +9,7 @@
 import { appearances, candidates, placesLinkTo, readSubject, type Appearance } from "../../core/appearances.js";
 import * as fm from "../../core/frontmatter.js";
 import type { Core } from "../../core/modules.js";
-import type { Document } from "../../core/spec.js";
+import { isProse, type Document } from "../../core/spec.js";
 import { stripPrefix } from "../../core/naming.js";
 import { formatCount, words } from "../../core/text.js";
 import { baseName, resolveLinkText } from "../../core/wikilink.js";
@@ -45,36 +45,21 @@ export interface Scope {
   title: string;
 }
 
-/** A project the writer chose by hand, which wins until a note in another project opens. */
-let chosenRoot: string | null = null;
-
-export function chooseScope(root: string | null): void {
-  chosenRoot = root;
-}
-
+/**
+ * Where Nib looks. A project picked by hand or the active note's project; the whole vault for a
+ * note outside any project; nowhere when nothing is open and nothing was picked.
+ */
 export async function scopeOf(core: Core, path: string | null = core.host.activeFile()): Promise<Scope> {
-  const project = path ? await core.projects.projectOf(path) : null;
-  if (project && chosenRoot !== null && project.root !== chosenRoot) chosenRoot = null;
-  const root = chosenRoot ?? project?.root ?? null;
-  if (root !== null) {
-    const p = (await core.projects.roots()).find((r) => r.root === root);
-    if (p) {
-      const note = await core.spec.read(p.notePath);
-      return { kind: "project", root: p.root, title: note.title ?? (p.root || "this vault") };
-    }
-  }
+  const chosen = core.projects.chosenRoot();
+  const project = chosen !== null ? ((await core.projects.roots()).find((r) => r.root === chosen) ?? null) : path ? await core.projects.projectOf(path) : null;
+  if (project) return { kind: "project", root: project.root, title: project.title };
   if (!path) return { kind: "none", root: "", title: "" };
   return { kind: "vault", root: "", title: "the whole vault" };
 }
 
 /** Every project with its title, for offering one to open. */
 export async function projectsToOpen(core: Core): Promise<{ title: string; notePath: string; root: string }[]> {
-  const out: { title: string; notePath: string; root: string }[] = [];
-  for (const p of await core.projects.roots()) {
-    const note = await core.spec.read(p.notePath);
-    out.push({ title: note.title ?? (p.root || "Vault"), notePath: p.notePath, root: p.root });
-  }
-  return out;
+  return (await core.projects.roots()).map((p) => ({ title: p.title, notePath: p.notePath, root: p.root }));
 }
 
 let jokeTold = false;
@@ -262,7 +247,7 @@ async function length(core: Core, what: string): Promise<Answer> {
   const root = await scopeRoot(core);
   const w = what.trim().toLowerCase();
   const docs = await core.projects.documents(root);
-  const isText = (d: Document) => d.type === "text" || d.type === "folder" || d.type === null;
+  const isText = isProse;
   if (/^(?:the\s+)?(?:manuscript|book|novel|project|draft|whole thing|everything)$/.test(w)) {
     let total = 0;
     let n = 0;

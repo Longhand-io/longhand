@@ -5,7 +5,6 @@
 // map, create a new map (blank canvas or from an image), and set a map's image.
 
 import type { Core, Module } from "../../core/modules.js";
-import { PROJECT_NOTE } from "../../core/projects.js";
 import { safeName, uniquePath } from "../../core/naming.js";
 import { isImagePath, newMapNote } from "./model.js";
 import { mountMapView } from "./view.js";
@@ -108,12 +107,9 @@ export const mapModule: Module = {
   },
 };
 
-/** `<project>/Maps/` for the active file's project, else `Maps/` at the vault root. */
+/** `<project>/Maps/` for the current project, else `Maps/` at the vault root. */
 async function mapFolder(core: Core): Promise<string> {
-  const active = core.host.activeFile();
-  const project = active ? await core.projects.projectOf(active) : null;
-  if (project && project.root !== "") return `${project.root}/Maps/`;
-  if (project && project.notePath === PROJECT_NOTE) return "Maps/";
-  return "Maps/";
+  const project = await core.projects.current();
+  return project && project.root !== "" ? `${project.root}/Maps/` : "Maps/";
 }
 

@@ -27,8 +27,8 @@ export interface DrawLayerOptions {
   onLeave(): void;
   promptText(): Promise<string | null>;
   newId(): string;
-  /** a shape was just created; the view usually switches back to Select */
-  onDone(): void;
+  /** the tool changed, by the view, a shortcut, or the layer itself after a shape is finished */
+  onToolChange(tool: Tool): void;
 }
 
 export interface DrawLayer {
@@ -385,8 +385,16 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
     const added = selectNew ? next[next.length - 1] : undefined;
     if (added) selectedId = added.id;
     opts.onChange(next);
-    if (added) opts.onDone();
+    if (added) setTool("select"); // a finished shape hands the pointer back
   };
+
+  function setTool(tool: Tool) {
+    currentTool = tool;
+    svg.classList.toggle("lh-draw-active", tool !== "select");
+    stage.classList.toggle("lh-map-drawing", tool !== "select");
+    if (tool !== "select") select(null);
+    opts.onToolChange(tool);
+  }
 
   function select(id: string | null) {
     selectedId = id;
@@ -404,12 +412,7 @@ export function createDrawLayer(stage: HTMLElement, opts: DrawLayerOptions): Dra
       if (selectedId && !shapes.some((x) => x.id === selectedId)) selectedId = null;
       opts.onSelect(shapes.find((x) => x.id === selectedId) ?? null);
     },
-    setTool(tool) {
-      currentTool = tool;
-      svg.classList.toggle("lh-draw-active", tool !== "select");
-      stage.classList.toggle("lh-map-drawing", tool !== "select");
-      if (tool !== "select") select(null);
-    },
+    setTool,
     tool: () => currentTool,
     setStyle(style) {
       currentStyle = style;

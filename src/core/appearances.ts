@@ -8,7 +8,7 @@
 
 import * as fm from "./frontmatter.js";
 import type { Core } from "./modules.js";
-import type { Document } from "./spec.js";
+import { isProse, typeLabel, type Document } from "./spec.js";
 import { stripPrefix } from "./naming.js";
 import { baseName, resolveLinkText } from "./wikilink.js";
 
@@ -35,19 +35,6 @@ export interface Subject {
   attachments: string[];
 }
 
-const KIND: { [type: string]: string } = {
-  setting: "Place",
-  character: "Character",
-  text: "Scene",
-  folder: "Folder",
-  map: "Map",
-  event: "Event",
-  pdf: "Research",
-  image: "Image",
-  web: "Web page",
-  other: "Research",
-};
-
 export async function readSubject(core: Core, path: string): Promise<Subject> {
   const doc = await core.spec.read(path);
   const aliasesRaw = fm.get(doc.fields, "aliases");
@@ -64,7 +51,7 @@ export async function readSubject(core: Core, path: string): Promise<Subject> {
   return {
     path,
     title: doc.title ?? stripPrefix(baseName(path)),
-    kind: KIND[doc.type ?? ""] ?? "Note",
+    kind: typeLabel(doc.type),
     aliases,
     matchNames: fm.get(doc.fields, "match_names") === true,
     attachments,
@@ -98,7 +85,7 @@ async function scan(core: Core, subject: Subject, mode: Mode): Promise<Appearanc
   const out: Appearance[] = [];
   for (const doc of docs) {
     if (doc.path === subject.path) continue;
-    if (doc.type && !(doc.type === "text" || doc.type === "folder")) continue;
+    if (!isProse(doc)) continue;
     const flat = await flattened(core, doc);
     const plain = flat.plain;
     const links = flat.links.filter((l) => l.resolved === subject.path);

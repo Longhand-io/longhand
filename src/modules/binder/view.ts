@@ -7,7 +7,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import { currentProject, projectPicker, rememberProject } from "../../core/picker.js";
+import { projectPicker } from "../../core/picker.js";
 import { formatCount } from "../../core/text.js";
 import { applyMove, buildTree, planMove, type Node } from "./tree.js";
 
@@ -17,12 +17,8 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
   el.appendChild(root);
   const head = document.createElement("div");
   head.className = "lh-binder-head";
-  // the project switcher: every project in the vault; follows the note you open, or your pick
-  const picker = projectPicker(core, (c) => {
-    projectRoot = c.root;
-    pinned = true;
-    void render();
-  });
+  // the project switcher; the registry decides which project is current
+  const picker = projectPicker(core);
   const total = document.createElement("div");
   total.className = "lh-binder-total";
   head.append(picker.el, total);
@@ -32,8 +28,6 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
 
   const collapsed = new Set<string>();
   let projectRoot: string | null = null;
-  /** true after the writer picked a project by hand; opening a note in another project still switches */
-  let pinned = false;
   let activePath: string | null = core.host.activeFile();
   let writing = false;
   let disposed = false;
@@ -41,11 +35,7 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
 
   const render = async () => {
     if (disposed) return;
-    if (!pinned || projectRoot === null) {
-      const c = await currentProject(core, activePath);
-      projectRoot = c?.root ?? null;
-    }
-    if (projectRoot !== null) rememberProject(projectRoot);
+    projectRoot = (await core.projects.current())?.root ?? null;
     await picker.refresh(projectRoot);
     if (projectRoot === null) {
       total.textContent = "";
@@ -171,11 +161,9 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
     const inProject = (p?: string) => !!p && (projectRoot === null || projectRoot === "" || p === projectRoot || p.startsWith(projectRoot + "/"));
     if (inProject(change.path) || inProject(change.oldPath) || change.path.endsWith("/_Project.md") || change.path === "_Project.md") void render();
   });
-  const unsubActive = core.host.onActiveFileChanged((path) => {
-    if (path && path.endsWith(".md")) {
-      activePath = path;
-      pinned = false;
-    }
+  const unsubActive = core.projects.onCurrentChanged(() => {
+    const path = core.host.activeFile();
+    if (path && path.endsWith(".md")) activePath = path;
     void render();
   });
   void render();

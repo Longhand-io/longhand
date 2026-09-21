@@ -18,6 +18,7 @@ export interface Project {
   /** folder path without trailing slash; "" for the vault root */
   root: string;
   notePath: string;
+  title: string;
   version: number | null;
 }
 
@@ -30,16 +31,71 @@ export class Projects {
   /** per-path values computed from a document, dropped when that path changes */
   private derivedCache = new Map<string, Map<string, unknown>>();
   private warned = new Set<string>();
+  /** a project the writer picked by hand; forgotten when a note from another project opens */
+  private chosen: string | null = null;
+  /** the project last shown, so panels have one to show when nothing is open */
+  private remembered: string | null = null;
+  private currentListeners = new Set<(p: Project | null) => void>();
 
   constructor(
     private readonly host: Host,
     private readonly spec: Spec,
   ) {
     host.onFileChanged((c) => this.changed(c));
+    host.onActiveFileChanged((path) => void this.activeChanged(path));
+  }
+
+  /**
+   * The project every project-level panel shows: the one picked by hand, else the active
+   * note's, else the one last shown, else the first. Null only when the vault has none.
+   */
+  async current(): Promise<Project | null> {
+    const roots = await this.roots();
+    if (roots.length === 0) return null;
+    const find = (root: string | null) => (root === null ? null : (roots.find((r) => r.root === root) ?? null));
+    const picked = find(this.chosen);
+    if (picked) return this.remember(picked);
+    const active = this.host.activeFile();
+    const own = active ? await this.projectOf(active) : null;
+    if (own) return this.remember(own);
+    return this.remember(find(this.remembered) ?? roots[0]!);
+  }
+
+  /** The project the writer picked by hand, if any. */
+  chosenRoot(): string | null {
+    return this.chosen;
+  }
+
+  choose(root: string | null): void {
+    this.chosen = root;
+    if (root !== null) this.remembered = root;
+    void this.notifyCurrent();
+  }
+
+  onCurrentChanged(cb: (p: Project | null) => void): () => void {
+    this.currentListeners.add(cb);
+    return () => this.currentListeners.delete(cb);
+  }
+
+  private remember(p: Project): Project {
+    this.remembered = p.root;
+    return p;
+  }
+
+  private async activeChanged(path: string | null): Promise<void> {
+    const own = path ? await this.projectOf(path) : null;
+    if (own && own.root !== this.chosen) this.chosen = null;
+    await this.notifyCurrent();
+  }
+
+  private async notifyCurrent(): Promise<void> {
+    const p = await this.current();
+    for (const l of this.currentListeners) l(p);
   }
 
   /** One file changed: forget only what depended on it. */
   private changed(c: FileChange): void {
+    if (c.path.endsWith(PROJECT_NOTE) || c.oldPath?.endsWith(PROJECT_NOTE)) queueMicrotask(() => void this.notifyCurrent());
     const isNote = (p: string | undefined) => !!p && p.toLowerCase().endsWith(".md");
     if (c.kind === "rename" && c.oldPath && !isNote(c.oldPath) && !isNote(c.path)) {
       // a folder moved: every path under it changed without its own event
@@ -76,7 +132,7 @@ export class Projects {
           `${root || "This vault"} uses Longhand spec ${version}; this plugin reads ${SPEC_VERSION}. Fields it does not know are kept as they are.`,
         );
       }
-      out.push({ root, notePath: path, version });
+      out.push({ root, notePath: path, title: doc.title ?? (root || "Vault"), version });
     }
     this.rootsCache = out.sort((a, b) => a.root.localeCompare(b.root));
     return this.rootsCache;

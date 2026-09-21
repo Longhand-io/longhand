@@ -4,7 +4,6 @@
 // The timeline module: the story-date axis for a project.
 
 import type { Core, Module } from "../../core/modules.js";
-import { currentProject } from "../../core/picker.js";
 import { mountTimelineView } from "./view.js";
 
 export const TIMELINE_VIEW = "longhand-timeline";
@@ -34,7 +33,7 @@ export const timelineModule: Module = {
     });
 
     const open = async () => {
-      const project = await currentProject(core);
+      const project = await core.projects.current();
       if (!project) {
         host.notify("No project in this vault yet. New… on the ribbon can make one.");
         return;

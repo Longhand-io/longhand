@@ -7,7 +7,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import { currentProject, projectPicker, rememberProject } from "../../core/picker.js";
+import { projectPicker } from "../../core/picker.js";
 import { formatStoryDate } from "../../core/storydate.js";
 import { TimelineModel, type Item, type SceneRef, type Timeline } from "./model.js";
 
@@ -22,10 +22,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
 
   const head = document.createElement("div");
   head.className = "lh-tl-head";
-  const picker = projectPicker(core, (c) => {
-    model = new TimelineModel(core, c.notePath);
-    void render();
-  });
+  const picker = projectPicker(core);
   const hint = document.createElement("div");
   hint.className = "lh-tl-hint";
   const axisRow = document.createElement("div");
@@ -101,7 +98,6 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     if (disposed) return;
     const tl = await model.load();
     current = tl;
-    rememberProject(tl.root);
     await picker.refresh(tl.root);
     board.replaceChildren();
     const dated = tl.lanes.some((l) => l.items.length > 0);
@@ -422,6 +418,12 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     if (writing) return;
     if (!current || change.path.startsWith(current.root ? current.root + "/" : "")) void render();
   });
+  const unfollow = core.projects.onCurrentChanged((p) => {
+    if (p && current && p.root !== current.root) {
+      model = new TimelineModel(core, p.notePath);
+      void render();
+    }
+  });
   void render();
 
   return {
@@ -429,6 +431,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
       disposed = true;
       resize.disconnect();
       unsubscribe();
+      unfollow();
       root.remove();
     },
   };
