@@ -10,14 +10,14 @@ import { appearances, candidates, placesLinkTo, readSubject, type Appearance } f
 import * as fm from "../../core/frontmatter.js";
 import type { Core } from "../../core/modules.js";
 import type { Document } from "../../core/spec.js";
-import { baseName, parseWikilink } from "../../core/wikilink.js";
+import { stripPrefix } from "../../core/naming.js";
+import { formatCount, words } from "../../core/text.js";
+import { baseName, resolveLinkText } from "../../core/wikilink.js";
 
 export interface Cite {
   label: string;
   detail?: string;
   path: string;
-  /** open as a map rather than as text */
-  map?: boolean;
 }
 
 /** Something Nib offers to do. Every action is one frontmatter edit the writer can see and undo. */
@@ -133,7 +133,7 @@ async function open(core: Core, name: string): Promise<Answer> {
   const doc = await findNote(core, name);
   if (doc) {
     await core.host.openNote(doc.path);
-    return { kind: "open", text: `${doc.title ?? baseName(doc.path)} is open.`, cites: [cite(doc)] };
+    return { kind: "open", text: `${doc.title ?? stripPrefix(baseName(doc.path))} is open.`, cites: [cite(doc)] };
   }
   const projects = await projectsToOpen(core);
   return {
@@ -208,7 +208,7 @@ async function whoIn(core: Core, name: string): Promise<Answer> {
     const hit = (await appearances(core, subject)).find((a) => a.doc.path === scene.path);
     if (hit) present.push({ label: subject.title, detail: `“${hit.sentence}”`, path: p.path });
   }
-  const title = scene.title ?? baseName(scene.path);
+  const title = scene.title ?? stripPrefix(baseName(scene.path));
   if (present.length === 0) {
     return { kind: "who-in", text: `No character note is linked from or named in ${title}. ${people.length === 0 ? "There are no character notes yet." : ""}`.trim(), cites: [cite(scene)] };
   }
@@ -242,7 +242,7 @@ async function audit(core: Core, name: string): Promise<Answer> {
 /** Carry out an action. Returns what Nib says afterwards. Every change is a frontmatter edit. */
 export async function perform(core: Core, action: Action): Promise<string> {
   const subject = await core.projects.byPath(action.subject);
-  const subjectTitle = subject?.title ?? baseName(action.subject);
+  const subjectTitle = subject?.title ?? stripPrefix(baseName(action.subject));
   if (action.kind === "match-names") {
     await core.spec.setField(action.subject, "match_names", true);
     return `Name matching is on for ${subjectTitle}. Every scene that names it counts now. It is one line in that note's frontmatter.`;
@@ -250,12 +250,12 @@ export async function perform(core: Core, action: Action): Promise<string> {
   if (!action.scene) return "Nothing to do.";
   const scene = await core.projects.byPath(action.scene);
   if (!scene) return `I cannot find ${action.scene} any more.`;
-  if (placesLinkTo(core, scene, action.subject)) return `${scene.title ?? baseName(scene.path)} is already set at ${subjectTitle}.`;
+  if (placesLinkTo(core, scene, action.subject)) return `${scene.title ?? stripPrefix(baseName(scene.path))} is already set at ${subjectTitle}.`;
   const existing = fm.get(scene.fields, "places");
   const list = Array.isArray(existing) ? existing.filter((p): p is string => typeof p === "string") : [];
   list.push(core.host.linkTo(action.subject, scene.path));
   await core.spec.setField(action.scene, "places", list);
-  return `${scene.title ?? baseName(scene.path)} is set at ${subjectTitle}: a places entry in its frontmatter, nothing in the prose.`;
+  return `${scene.title ?? stripPrefix(baseName(scene.path))} is set at ${subjectTitle}: a places entry in its frontmatter, nothing in the prose.`;
 }
 
 async function length(core: Core, what: string): Promise<Answer> {
@@ -271,19 +271,19 @@ async function length(core: Core, what: string): Promise<Answer> {
       total += words(await core.host.readFile(d.path));
       n++;
     }
-    return { kind: "length", text: `${fmt(total)} words across ${n} documents.`, cites: [] };
+    return { kind: "length", text: `${formatCount(total)} words across ${n} documents.`, cites: [] };
   }
   const doc = await findNote(core, what);
   if (doc) {
     const n = words(await core.host.readFile(doc.path));
-    return { kind: "length", text: `${doc.title ?? baseName(doc.path)} is ${fmt(n)} words.`, cites: [cite(doc)] };
+    return { kind: "length", text: `${doc.title ?? stripPrefix(baseName(doc.path))} is ${formatCount(n)} words.`, cites: [cite(doc)] };
   }
   // a folder?
-  const folder = docs.filter((d) => isText(d) && d.path.toLowerCase().split("/").some((seg) => seg.replace(/^\d+\s+/, "") === w));
+  const folder = docs.filter((d) => isText(d) && d.path.toLowerCase().split("/").some((seg) => stripPrefix(seg) === w));
   if (folder.length) {
     let total = 0;
     for (const d of folder) total += words(await core.host.readFile(d.path));
-    return { kind: "length", text: `${what.trim()} is ${fmt(total)} words across ${folder.length} documents.`, cites: [] };
+    return { kind: "length", text: `${what.trim()} is ${formatCount(total)} words across ${folder.length} documents.`, cites: [] };
   }
   return unknown(what);
 }
@@ -296,20 +296,17 @@ async function onMap(core: Core, name: string): Promise<Answer> {
   const hits: Cite[] = [];
   for (const mdoc of maps) {
     const note = core.spec.mapFromDocument(mdoc);
-    const resolves = (link: string) => {
-      const l = parseWikilink(link);
-      return core.host.resolveLink(l ? l.target : link, mdoc.path) === doc.path;
-    };
+    const resolves = (link: string) => resolveLinkText(core.host.resolveLink.bind(core.host), link, mdoc.path) === doc.path;
     const pins = note.pins.filter((p) => resolves(p.to)).length;
     const shapes = note.shapes.filter((s) => s.to && resolves(s.to)).length;
     if (pins + shapes > 0) {
       const parts = [];
       if (pins) parts.push(`${pins} ${pins === 1 ? "pin" : "pins"}`);
       if (shapes) parts.push(`${shapes} ${shapes === 1 ? "shape" : "shapes"}`);
-      hits.push({ label: note.title ?? baseName(mdoc.path), detail: parts.join(", "), path: mdoc.path, map: true });
+      hits.push({ label: note.title ?? stripPrefix(baseName(mdoc.path)), detail: parts.join(", "), path: mdoc.path });
     }
   }
-  const title = doc.title ?? baseName(doc.path);
+  const title = doc.title ?? stripPrefix(baseName(doc.path));
   if (hits.length === 0) return { kind: "on-map", text: `${title} is not on any map in this project.${maps.length ? "" : " There are no maps yet."}`, cites: [cite(doc)] };
   return { kind: "on-map", text: `${title} is on ${hits.map((h) => h.label).join(" and ")}.`, cites: hits };
 }
@@ -347,7 +344,7 @@ async function scopeRoot(core: Core): Promise<string> {
 
 /** A note by title, alias, or file name, case-insensitively; exact matches first, then a contains match. */
 export async function findNote(core: Core, name: string): Promise<Document | null> {
-  const norm = (s: string) => s.trim().toLowerCase().replace(/^\d+\s+/, "").replace(/^(?:the\s+)/, "");
+  const norm = (s: string) => s.trim().toLowerCase().replace(/^(?:the\s+)/, "");
   const n = norm(name);
   if (!n) return null;
   const root = await scopeRoot(core);
@@ -371,9 +368,5 @@ function citeAppearance(a: Appearance): Cite {
   return { label: a.title, detail: `${a.chapter ? a.chapter + " · " : ""}“${a.sentence}”`, path: a.doc.path };
 }
 
-import { words } from "../../core/text.js";
 export { words };
 
-function fmt(n: number): string {
-  return n.toLocaleString("en-US");
-}

@@ -17,18 +17,17 @@ import {
   normalizePath,
 } from "obsidian";
 import type { App } from "obsidian";
-import { IMAGE_EXTENSIONS } from "../../modules/map/model.js";
-import type { Choice, Command, Companion, FileChange, FileMenuItem, Host, Overlay, PickKind, ViewFactory, ViewHandle, ViewState } from "../host.js";
+import { get as getField, parse as parseFrontmatter } from "../../core/frontmatter.js";
+import { IMAGE_EXTENSIONS, type Choice, type Command, type FileChange, type FileMenuItem, type Host, type Overlay, type PickKind, type ViewFactory, type ViewHandle, type ViewState } from "../host.js";
 
 export class ObsidianHost implements Host {
   readonly isMobile: boolean = Platform.isMobile;
   private readonly app: App;
   private listeners = new Set<(c: FileChange) => void>();
   private factories = new Map<string, ViewFactory>();
-  readonly companions: Companion[] = [];
   private overlays = new Map<string, { el: HTMLElement; handle: ViewHandle }>();
   private activeListeners = new Set<(p: string | null) => void>();
-  private autoViews: { type: string; when: (path: string) => boolean }[] = [];
+  private autoViews: { type: string; when: (path: string, noteType: string | null) => boolean }[] = [];
   /** paths to open as plain Markdown once, skipping the auto view */
   private bypass = new Set<string>();
 
@@ -76,13 +75,12 @@ export class ObsidianHost implements Host {
       this.bypass.delete(file.path);
       return;
     }
-    let auto = this.autoViews.find((a) => a.when(file.path));
+    let auto = this.autoViews.find((a) => a.when(file.path, null));
     if (!auto && !this.app.metadataCache.getFileCache(file)) {
-      // the cache has not indexed this note yet; read the frontmatter ourselves
-      const text = await this.app.vault.cachedRead(file);
-      const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
-      const type = m ? /^type:\s*"?([A-Za-z]+)"?\s*$/m.exec(m[1] ?? "")?.[1] : undefined;
-      if (type) auto = this.autoViews.find((a) => a.when(file.path) || this.typeClaims(a, type));
+      // the cache has not indexed this note yet; read the frontmatter through the real parser
+      const fields = parseFrontmatter(await this.app.vault.cachedRead(file));
+      const type = getField(fields, "type");
+      auto = this.autoViews.find((a) => a.when(file.path, typeof type === "string" ? type : null));
     }
     if (!auto) return;
     const leaves = only
@@ -93,10 +91,6 @@ export class ObsidianHost implements Host {
       // let Obsidian finish opening the Markdown view before replacing it
       window.setTimeout(() => void leaf.setViewState({ type: auto!.type, state, active: true }), 0);
     }
-  }
-
-  private typeClaims(auto: { type: string; when: (path: string) => boolean }, noteType: string): boolean {
-    return auto.type === `longhand-${noteType}`;
   }
 
   private file(path: string): TFile | null {
@@ -186,7 +180,7 @@ export class ObsidianHost implements Host {
 
   registerView(type: string, factory: ViewFactory): void {
     this.factories.set(type, factory);
-    this.plugin.registerView(type, (leaf) => new HostView(leaf, type, factory, this));
+    this.plugin.registerView(type, (leaf) => new HostView(leaf, type, factory));
   }
 
   async openView(type: string, state: ViewState): Promise<void> {
@@ -205,7 +199,7 @@ export class ObsidianHost implements Host {
     await this.app.workspace.revealLeaf(leaf);
   }
 
-  registerAutoView(type: string, when: (path: string) => boolean): void {
+  registerAutoView(type: string, when: (path: string, noteType: string | null) => boolean): void {
     this.autoViews.push({ type, when });
   }
 
@@ -238,15 +232,6 @@ export class ObsidianHost implements Host {
     o.handle.destroy();
     o.el.remove();
     this.overlays.delete(id);
-  }
-
-  registerCompanion(companion: Companion): void {
-    this.companions.push(companion); // open views pick it up on their next mount
-  }
-
-  unregisterCompanion(id: string): void {
-    const i = this.companions.findIndex((c) => c.id === id);
-    if (i >= 0) this.companions.splice(i, 1);
   }
 
   async openNoteAsMarkdown(path: string): Promise<void> {
@@ -318,13 +303,11 @@ export class ObsidianHost implements Host {
 class HostView extends ItemView {
   private state: ViewState = { path: "" };
   private handle: ViewHandle | null = null;
-  private companionHandles: ViewHandle[] = [];
 
   constructor(
     leaf: WorkspaceLeaf,
     private readonly type: string,
     private readonly factory: ViewFactory,
-    private readonly host: ObsidianHost,
   ) {
     super(leaf);
   }
@@ -367,8 +350,6 @@ class HostView extends ItemView {
   private unmount(): void {
     this.handle?.destroy();
     this.handle = null;
-    for (const h of this.companionHandles) h.destroy();
-    this.companionHandles = [];
   }
 
   private mount(): void {
@@ -376,10 +357,6 @@ class HostView extends ItemView {
     const container = this.contentEl;
     container.empty();
     this.handle = this.factory.mount(container, this.state);
-    // companions ride along on main-area views that have a file; not on sidebar views
-    if (this.state.path && (this.factory.placement ?? "tab") === "tab") {
-      for (const c of this.host.companions) this.companionHandles.push(c.mount(container, this.state));
-    }
   }
 }
 

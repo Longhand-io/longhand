@@ -5,11 +5,12 @@
 // the tests call this. Every change is one frontmatter write of `pins` and nothing else.
 
 import type { Core } from "../../core/modules.js";
+import { IMAGE_EXTENSIONS } from "../../host/host.js";
 import { clamp01, type MapNote, type Pin, type Shape } from "../../core/spec.js";
-import { baseName, parseWikilink } from "../../core/wikilink.js";
+import { baseName, linkLabel, resolveLinkText } from "../../core/wikilink.js";
 import { newId } from "../../core/naming.js";
 
-export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "avif"];
+export { IMAGE_EXTENSIONS };
 export const DEFAULT_CANVAS = { width: 1600, height: 1000 };
 
 export interface ResolvedMap extends MapNote {
@@ -27,26 +28,23 @@ export class MapModel {
 
   async load(): Promise<ResolvedMap> {
     const note = await this.core.spec.readMap(this.path);
-    let imagePath: string | null = null;
-    if (note.image) {
-      const link = parseWikilink(note.image);
-      imagePath = this.core.host.resolveLink(link ? link.target : note.image, this.path);
-    }
+    const imagePath = note.image ? this.resolve(note.image) : null;
     const aspect = note.width && note.height && note.width > 0 && note.height > 0 ? note.width / note.height : null;
     return { ...note, imagePath, aspect };
   }
 
+  /** A link as written on this note, to a vault path; null when it does not resolve. */
+  resolve(linkText: string): string | null {
+    return resolveLinkText(this.core.host.resolveLink.bind(this.core.host), linkText, this.path);
+  }
+
   /** The vault path a pin points at, or null when the link does not resolve. */
   targetOf(pin: Pin): string | null {
-    const link = parseWikilink(pin.to);
-    return this.core.host.resolveLink(link ? link.target : pin.to, this.path);
+    return this.resolve(pin.to);
   }
 
   labelOf(pin: Pin): string {
-    if (pin.label) return pin.label;
-    const link = parseWikilink(pin.to);
-    if (link?.alias) return link.alias;
-    return baseName(link ? link.target : pin.to);
+    return pin.label || linkLabel(pin.to);
   }
 
   async addPin(targetPath: string, x: number, y: number, label?: string): Promise<Pin> {
@@ -106,9 +104,7 @@ export class MapModel {
   }
 
   targetOfShape(shape: Shape): string | null {
-    if (!shape.to) return null;
-    const link = parseWikilink(shape.to);
-    return this.core.host.resolveLink(link ? link.target : shape.to, this.path);
+    return shape.to ? this.resolve(shape.to) : null;
   }
 
   newShapeId(): string {
@@ -122,14 +118,10 @@ export class MapModel {
   }
 }
 
-/** Drop undefined and empty optional fields so they are not written. */
-function clean(s: Shape): Shape {
+/** Drop undefined and empty optional fields so a patched shape carries only what it means. */
+export function clean(s: Shape): Shape {
   const out: Shape = { id: s.id, type: s.type };
-  if (s.x !== undefined) out.x = s.x;
-  if (s.y !== undefined) out.y = s.y;
-  if (s.r !== undefined) out.r = s.r;
-  if (s.w !== undefined) out.w = s.w;
-  if (s.h !== undefined) out.h = s.h;
+  for (const k of ["x", "y", "r", "w", "h"] as const) if (s[k] !== undefined) out[k] = s[k];
   if (s.points) out.points = s.points;
   if (s.style) out.style = s.style;
   if (s.color) out.color = s.color;

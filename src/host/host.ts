@@ -30,12 +30,6 @@ export interface ViewFactory {
   mount(el: HTMLElement, state: ViewState): ViewHandle;
 }
 
-/** UI a module adds to every Longhand view. The host mounts it. */
-export interface Companion {
-  id: string;
-  mount(el: HTMLElement, state: ViewState): ViewHandle;
-}
-
 /** UI a module lays over the whole window, once, for as long as it is on: Nib in the corner. */
 export interface Overlay {
   id: string;
@@ -51,6 +45,9 @@ export interface Command {
 }
 
 export type PickKind = "note" | "image";
+
+/** What "image" means to pickFile and to the map: every format the host can draw. */
+export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "avif"];
 
 export interface Choice<T> {
   label: string;
@@ -96,10 +93,12 @@ export interface Host {
   openNote(path: string): Promise<void>;
   registerView(type: string, factory: ViewFactory): void;
   openView(type: string, state: ViewState): Promise<void>;
-  /** when a note that satisfies `when` opens as plain Markdown, replace it with this view */
-  registerAutoView(type: string, when: (path: string) => boolean): void;
-  registerCompanion(companion: Companion): void;
-  unregisterCompanion(id: string): void;
+  /**
+   * When a note that satisfies `when` opens as plain Markdown, replace it with this view.
+   * `noteType` is the note's frontmatter type when the host had to read the file itself
+   * because its cache had not caught up; null otherwise.
+   */
+  registerAutoView(type: string, when: (path: string, noteType: string | null) => boolean): void;
   registerOverlay(overlay: Overlay): void;
   unregisterOverlay(id: string): void;
   /** the active note changed; null when none */

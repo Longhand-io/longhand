@@ -28,6 +28,19 @@ export function linkTarget(path: string, short: boolean): string {
   return slash >= 0 ? noExt.slice(slash + 1) : noExt;
 }
 
+/** Resolve link text as written in a note, `[[Target|alias]]` or bare, to a vault path. */
+export function resolveLinkText(resolve: (target: string, from: string) => string | null, text: string, from: string): string | null {
+  const link = parseWikilink(text);
+  return resolve(link ? link.target : text, from);
+}
+
+/** The display text of a link as a writer reads it: the alias, else the target's file name. */
+export function linkLabel(text: string): string {
+  const link = parseWikilink(text);
+  if (link?.alias) return link.alias;
+  return baseName(link ? link.target : text);
+}
+
 /** File name without folder or extension. */
 export function baseName(path: string): string {
   const slash = path.lastIndexOf("/");

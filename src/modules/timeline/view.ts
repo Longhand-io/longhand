@@ -8,7 +8,7 @@
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import { currentProject, projectPicker, rememberProject } from "../../core/picker.js";
-import { fromDays } from "../../core/storydate.js";
+import { formatStoryDate } from "../../core/storydate.js";
 import { TimelineModel, type Item, type SceneRef, type Timeline } from "./model.js";
 
 const DRAG_THRESHOLD = 4;
@@ -26,35 +26,13 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     model = new TimelineModel(core, c.notePath);
     void render();
   });
-  const title = document.createElement("div");
-  title.className = "lh-tl-title";
-  title.hidden = true;
   const hint = document.createElement("div");
   hint.className = "lh-tl-hint";
   const axisRow = document.createElement("div");
   axisRow.className = "lh-tl-axis";
   const axisLabel = document.createElement("span");
   axisLabel.textContent = "Axis";
-  const axisButtons = new Map<Axis, HTMLButtonElement>();
-  for (const [id, label] of [["manuscript", "Manuscript order"], ["story", "Story date"]] as [Axis, string][]) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "lh-map-tool";
-    b.textContent = label;
-    b.addEventListener("click", () => {
-      axis = id;
-      axisChosen = true;
-      void render();
-    });
-    axisButtons.set(id, b);
-  }
-  axisRow.append(axisLabel, ...axisButtons.values());
-  // zoom: fit the whole story, or widen the board so a year, then a month, gets room
-  const zoomRow = document.createElement("div");
-  zoomRow.className = "lh-tl-axis";
-  const zoomLabel = document.createElement("span");
-  zoomLabel.textContent = "Zoom";
-  const zoomButton = (label: string, title: string, fn: () => void) => {
+  const toolButton = (label: string, title: string, fn: () => void) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "lh-map-tool";
@@ -63,12 +41,30 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     b.addEventListener("click", fn);
     return b;
   };
+  const axisButtons = new Map<Axis, HTMLButtonElement>();
+  for (const [id, label] of [["manuscript", "Manuscript order"], ["story", "Story date"]] as [Axis, string][]) {
+    axisButtons.set(
+      id,
+      toolButton(label, `Lay the threads out by ${label.toLowerCase()}`, () => {
+        axis = id;
+        axisChosen = true;
+        void render();
+      }),
+    );
+  }
+  axisRow.append(axisLabel, ...axisButtons.values());
+  // zoom: fit the whole story, or widen the board so a year, then a month, gets room
+  const zoomRow = document.createElement("div");
+  zoomRow.className = "lh-tl-axis";
+  const zoomLabel = document.createElement("span");
+  zoomLabel.textContent = "Zoom";
+  const zoomButton = toolButton;
   let zoom = 1; // board width as a multiple of the viewport
   const zoomOut = zoomButton("−", "Zoom out", () => setZoom(zoom / 1.6));
   const zoomFit = zoomButton("Fit", "The whole story in the window", () => setZoom(1));
   const zoomIn = zoomButton("+", "Zoom in", () => setZoom(zoom * 1.6));
   zoomRow.append(zoomLabel, zoomOut, zoomFit, zoomIn);
-  head.append(picker.el, title, hint, axisRow, zoomRow);
+  head.append(picker.el, hint, axisRow, zoomRow);
   let axis: Axis = "story";
   let axisChosen = false;
   const setZoom = (z: number) => {
@@ -105,7 +101,6 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     if (disposed) return;
     const tl = await model.load();
     current = tl;
-    title.textContent = `${tl.projectTitle}`;
     rememberProject(tl.root);
     await picker.refresh(tl.root);
     board.replaceChildren();
@@ -156,16 +151,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     for (const lane of tl.lanes) {
       const track = document.createElement("div");
       track.className = "lh-tl-track";
-      const name = document.createElement("span");
-      name.className = "lh-tl-lane-name";
-      if (lane.color !== null) {
-        const dot = document.createElement("i");
-        dot.className = "lh-tl-lab";
-        dot.style.background = laneColor(lane.color);
-        name.appendChild(dot);
-      }
-      name.append(document.createTextNode(lane.name));
-      track.appendChild(name);
+      track.appendChild(labelled("span", "lh-tl-lane-name", lane.name, lane.color));
       for (const item of lane.items) track.appendChild(pinFor(item, lane.color));
       board.appendChild(track);
     }
@@ -190,7 +176,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
         const dot = document.createElement("span");
         dot.className = "lh-tl-dot";
         dot.style.left = `${(wmax === wmin ? 0.5 : (w.days - wmin) / (wmax - wmin)) * 92 + 4}%`;
-        dot.title = `${w.title}, created ${formatDays(w.days)}`;
+        dot.title = `${w.title}, created ${formatStoryDate(w.days, "day")}`;
         dot.addEventListener("click", () => void core.host.openNote(w.doc.path));
         track.appendChild(dot);
       }
@@ -243,18 +229,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     const corner = document.createElement("div");
     corner.className = "lh-th-head";
     grid.appendChild(corner);
-    for (const th of threads) {
-      const h = document.createElement("div");
-      h.className = "lh-th-head";
-      if (th.color !== null) {
-        const dot = document.createElement("i");
-        dot.className = "lh-tl-lab";
-        dot.style.background = laneColor(th.color);
-        h.appendChild(dot);
-      }
-      h.append(document.createTextNode(th.name));
-      grid.appendChild(h);
-    }
+    for (const th of threads) grid.appendChild(labelled("div", "lh-th-head", th.name, th.color));
     if (tl.scenes.length === 0) {
       const empty = document.createElement("div");
       empty.className = "lh-tl-empty";
@@ -371,15 +346,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
       bar.style.width = `${(fraction(item.end.days) - fraction(item.start.days)) * 100}%`;
       pin.appendChild(bar);
     }
-    const tag = document.createElement("span");
-    tag.className = "lh-tl-tag";
-    if (color !== null) {
-      const dot = document.createElement("i");
-      dot.className = "lh-tl-lab";
-      dot.style.background = laneColor(color);
-      tag.appendChild(dot);
-    }
-    tag.append(document.createTextNode(item.title));
+    const tag = labelled("span", "lh-tl-tag", item.title, color);
     pin.appendChild(tag);
     const when = model.labelFor(item.start) + (item.end ? ` to ${model.labelFor(item.end)}` : "");
     pin.title = item.synopsis ? `${when}. ${item.synopsis}` : when;
@@ -462,7 +429,16 @@ export function laneColor(index: number): string {
   return `var(--lh-color-${LANE_COLORS[index % LANE_COLORS.length]})`;
 }
 
-function formatDays(days: number): string {
-  const { year, month, day } = fromDays(days);
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+/** An element carrying a thread's colour dot and a name. */
+function labelled(tag: "span" | "div", className: string, name: string, color: number | null): HTMLElement {
+  const el = document.createElement(tag);
+  el.className = className;
+  if (color !== null) {
+    const dot = document.createElement("i");
+    dot.className = "lh-tl-lab";
+    dot.style.background = laneColor(color);
+    el.appendChild(dot);
+  }
+  el.append(document.createTextNode(name));
+  return el;
 }

@@ -72,19 +72,8 @@
 
 .lh-map-edit {
   margin-left: auto;
-  padding: 0.2rem 0.6rem;
-  font: inherit;
-  font-size: 0.8rem;
-  color: var(--lh-ink);
-  background: var(--lh-paper);
-  border: 1px solid var(--lh-rule);
-  border-radius: var(--lh-card-radius);
-  cursor: pointer;
 }
 
-.lh-map-edit:hover {
-  border-color: var(--lh-ink);
-}
 
 .lh-map-scroll {
   flex: 1;
@@ -377,11 +366,9 @@
   padding: 0.4rem 1rem;
   border-bottom: 1px solid var(--lh-rule);
   background: var(--lh-paper);
-}
-
-.lh-map-props {
   background: var(--lh-paper-deep);
 }
+
 
 .lh-map-props[hidden] {
   display: none;
@@ -398,12 +385,10 @@
   border: 1px solid var(--lh-rule);
   border-radius: var(--lh-card-radius);
   cursor: pointer;
-}
-
-.lh-map-prop-label {
   cursor: text;
   min-width: 12rem;
 }
+
 
 .lh-map-tool:hover,
 .lh-map-style:hover {
@@ -590,6 +575,7 @@
   gap: 0.7rem;
   padding: 0.8rem 1rem 0.6rem;
   border-bottom: 1px solid var(--lh-rule);
+  flex-wrap: wrap;
 }
 
 .lh-nib-mark {
@@ -787,10 +773,6 @@
 }
 
 .lh-root button.lh-nib-dock-button:hover,
-.lh-root button.lh-nib-dock-open {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(30, 36, 50, 0.35);
-}
 
 .lh-nib-bubble {
   position: relative;
@@ -975,13 +957,9 @@
   gap: 0.25rem 1rem;
   padding: 0.6rem 1rem;
   border-bottom: 1px solid var(--lh-rule);
+  padding: 0.7rem 1.25rem;
 }
 
-.lh-tl-title {
-  font-family: var(--lh-font-body);
-  font-size: 1.15rem;
-  font-weight: 500;
-}
 
 .lh-tl-hint {
   color: var(--lh-graphite);
@@ -997,6 +975,8 @@
 .lh-tl-board {
   position: relative;
   min-width: 40rem;
+  padding-right: 6rem;
+  box-sizing: border-box;
 }
 
 .lh-tl-ruler {
@@ -1191,9 +1171,6 @@
 
 /* ---- the threads board (manuscript-order axis), as on the site ---- */
 
-.lh-tl-head {
-  padding: 0.7rem 1.25rem;
-}
 
 .lh-tl-axis .lh-map-tool {
   border-radius: 3px;
@@ -1298,10 +1275,6 @@
 
 /* ---- timeline: parts band, stacked pins, room at the edges ---- */
 
-.lh-tl-board {
-  padding-right: 6rem;
-  box-sizing: border-box;
-}
 
 .lh-tl-parts {
   position: relative;
@@ -1473,24 +1446,7 @@
   bottom: -1px;
 }
 
-.lh-root select.lh-binder-picker {
-  flex: 1;
-  min-width: 0;
-  padding: 0.15rem 0.4rem;
-  font-family: var(--lh-font-body);
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--lh-ink);
-  background: var(--lh-paper);
-  border: 1px solid transparent;
-  border-radius: 3px;
-  box-shadow: none;
-  cursor: pointer;
-}
 
-.lh-root select.lh-binder-picker:hover {
-  border-color: var(--lh-rule);
-}
 
 /* the shared project switcher, styled as a panel title */
 .lh-root select.lh-project-picker {
@@ -1521,9 +1477,6 @@
   flex: 0 1 auto;
 }
 
-.lh-nib-head {
-  flex-wrap: wrap;
-}
 
 .lh-nib-titles {
   flex: 1;

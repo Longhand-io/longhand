@@ -171,16 +171,14 @@ function shapeFromValue(v: Value): Shape | null {
   const type = str(v["type"]);
   if (!id || !type || !["circle", "rect", "polygon", "line", "text"].includes(type)) return null;
   const s: Shape = { id, type: type as ShapeType };
-  const x = num(v["x"]);
-  const y = num(v["y"]);
-  const r = num(v["r"]);
-  const w = num(v["w"]);
-  const h = num(v["h"]);
-  if (x !== null) s.x = clamp01(x);
-  if (y !== null) s.y = clamp01(y);
-  if (r !== null) s.r = Math.max(0, r);
-  if (w !== null) s.w = Math.max(0, w);
-  if (h !== null) s.h = Math.max(0, h);
+  for (const k of ["x", "y"] as const) {
+    const n = num(v[k]);
+    if (n !== null) s[k] = clamp01(n);
+  }
+  for (const k of ["r", "w", "h"] as const) {
+    const n = num(v[k]);
+    if (n !== null) s[k] = Math.max(0, n);
+  }
   const pts = str(v["points"]);
   if (pts !== null) s.points = parsePoints(pts);
   const style = str(v["style"]);
@@ -201,11 +199,7 @@ function shapeFromValue(v: Value): Shape | null {
 
 function shapeToValue(s: Shape): { [k: string]: Value } {
   const o: { [k: string]: Value } = { id: s.id, type: s.type };
-  if (s.x !== undefined) o["x"] = round(s.x);
-  if (s.y !== undefined) o["y"] = round(s.y);
-  if (s.r !== undefined) o["r"] = round(s.r);
-  if (s.w !== undefined) o["w"] = round(s.w);
-  if (s.h !== undefined) o["h"] = round(s.h);
+  for (const k of ["x", "y", "r", "w", "h"] as const) if (s[k] !== undefined) o[k] = round(s[k]);
   if (s.points) o["points"] = formatPoints(s.points);
   if (s.style) o["style"] = s.style;
   if (s.color) o["color"] = s.color;

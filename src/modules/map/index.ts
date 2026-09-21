@@ -37,7 +37,7 @@ export const mapModule: Module = {
       },
     });
 
-    const isMap = (path: string): boolean => host.cachedFrontmatter(path)?.["type"] === "map";
+    const isMap = (path: string, noteType: string | null = null): boolean => (noteType ?? host.cachedFrontmatter(path)?.["type"]) === "map";
 
     const activeIsMap = (): string | null => {
       const path = host.activeFile();

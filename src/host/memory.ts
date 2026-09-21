@@ -5,7 +5,7 @@
 
 import { parse, get } from "../core/frontmatter.js";
 import { linkTarget } from "../core/wikilink.js";
-import type { Choice, Command, Companion, FileChange, FileMenuItem, Host, Overlay, PickKind, ViewFactory, ViewState } from "./host.js";
+import type { Choice, Command, FileChange, FileMenuItem, Host, Overlay, PickKind, ViewFactory, ViewState } from "./host.js";
 
 export class MemoryHost implements Host {
   readonly isMobile = false;
@@ -15,8 +15,7 @@ export class MemoryHost implements Host {
   views = new Map<string, ViewFactory>();
   openedViews: { type: string; state: ViewState }[] = [];
   commands = new Map<string, Command>();
-  autoViews: { type: string; when: (path: string) => boolean }[] = [];
-  companions: Companion[] = [];
+  autoViews: { type: string; when: (path: string, noteType: string | null) => boolean }[] = [];
   overlays: Overlay[] = [];
   private activeListeners = new Set<(p: string | null) => void>();
   fileMenu: FileMenuItem[] = [];
@@ -148,16 +147,8 @@ export class MemoryHost implements Host {
     this.openedViews.push({ type, state });
   }
 
-  registerAutoView(type: string, when: (path: string) => boolean): void {
+  registerAutoView(type: string, when: (path: string, noteType: string | null) => boolean): void {
     this.autoViews.push({ type, when });
-  }
-
-  registerCompanion(companion: Companion): void {
-    this.companions.push(companion);
-  }
-
-  unregisterCompanion(id: string): void {
-    this.companions = this.companions.filter((c) => c.id !== id);
   }
 
   async openNoteAsMarkdown(path: string): Promise<void> {

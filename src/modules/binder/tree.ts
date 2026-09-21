@@ -5,8 +5,9 @@
 // the plan for moving a sibling: renames when the folder is numbered, `order` fields when it
 // is not. Nothing here touches the DOM.
 
+import * as fm from "../../core/frontmatter.js";
 import type { Core } from "../../core/modules.js";
-import { nextName, safeName } from "../../core/naming.js";
+import { safeName, splitPrefix } from "../../core/naming.js";
 import type { Document } from "../../core/spec.js";
 import { words } from "../../core/text.js";
 
@@ -27,12 +28,7 @@ export interface Node {
   label: string | null;
 }
 
-const PREFIX = /^(\d+)\s+/;
-
-export function splitPrefix(name: string): { prefix: string; rest: string } {
-  const m = PREFIX.exec(name);
-  return m ? { prefix: m[1] ?? "", rest: name.slice(m[0].length) } : { prefix: "", rest: name };
-}
+export { splitPrefix };
 
 /** Build the tree for a project root from its documents in binder order. */
 export async function buildTree(core: Core, root: string): Promise<Node> {
@@ -58,13 +54,12 @@ export async function buildTree(core: Core, root: string): Promise<Node> {
     const parent = folderFor(dir);
     const { prefix, rest } = splitPrefix(base);
     const folderBase = dir.slice(dir.lastIndexOf("/") + 1);
-    const count = doc.type === "text" || doc.type === null || doc.type === "folder" ? words(await core.host.readFile(doc.path)) : 0;
-    const status = fieldStr(doc, "status");
-    const label = fieldStr(doc, "label");
+    const count = doc.type === "text" || doc.type === null || doc.type === "folder" ? words(doc.fields.body) : 0;
+    const status = str(fm.get(doc.fields, "status"));
+    const label = str(fm.get(doc.fields, "label"));
     if (base === folderBase && parent !== top) {
-      // the folder's own note
+      // the folder's own note; its words are added in the roll-up below
       parent.note = doc;
-      parent.words += count;
       parent.status = status;
       parent.label = label;
       continue;
@@ -83,39 +78,23 @@ export async function buildTree(core: Core, root: string): Promise<Node> {
       label,
     });
   }
-  // documents() is in binder order but folders were created on first sight; re-sort every level
-  const sortLevel = (n: Node) => {
+  // documents() arrives in binder order and folders are created on first sight, so every
+  // level is already ordered; this pass only rolls the word counts up
+  const rollUp = (n: Node) => {
     if (n.kind !== "folder") return;
-    n.children.sort((a, b) => compareNames(a, b));
-    for (const c of n.children) sortLevel(c);
+    for (const c of n.children) rollUp(c);
     n.words = n.children.reduce((sum, c) => sum + c.words, n.note ? words(n.note.fields.body) : 0);
   };
-  sortLevel(top);
+  rollUp(top);
   return top;
-}
-
-function compareNames(a: Node, b: Node): number {
-  const pa = a.prefix ? Number(a.prefix) : null;
-  const pb = b.prefix ? Number(b.prefix) : null;
-  if (pa !== null && pb !== null && pa !== pb) return pa - pb;
-  if (pa !== null && pb === null) return -1;
-  if (pa === null && pb !== null) return 1;
-  const oa = a.doc?.order ?? null;
-  const ob = b.doc?.order ?? null;
-  if (oa !== null && ob !== null && oa !== ob) return oa - ob;
-  return baseOf(a.path).localeCompare(baseOf(b.path), undefined, { numeric: true });
 }
 
 function baseOf(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
 }
 
-function fieldStr(doc: Document, key: string): string | null {
-  const e = doc.fields.entries.find((x) => x.key === key);
-  if (!e) return null;
-  const line = e.lines[0] ?? "";
-  const m = /:\s*"?([^"]*)"?\s*$/.exec(line);
-  return m && m[1] ? m[1] : null;
+function str(v: fm.Value | undefined): string | null {
+  return typeof v === "string" && v !== "" ? v : null;
 }
 
 export interface Move {
@@ -166,4 +145,3 @@ export async function applyMove(core: Core, move: Move): Promise<void> {
   for (const [path, n] of move.orders) await core.spec.setField(path, "order", n);
 }
 
-export { nextName };

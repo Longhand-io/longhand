@@ -5,7 +5,7 @@
 // hosts the tools. Coordinates on the note are fractions; here they are user units in a
 // viewBox 1000 wide, so strokes, glyphs, and text scale with the map. No drawing library.
 
-import type { Shape, ShapeColor, ShapeStyle, ShapeType } from "../../core/spec.js";
+import type { Shape, ShapeColor, ShapeStyle } from "../../core/spec.js";
 import { alongLine, bounds, centroid, midpoint, simplify, type Point } from "./geometry.js";
 
 export type Tool = "select" | "circle" | "rect" | "draw" | "line" | "polygon" | "text";
@@ -660,7 +660,6 @@ export const TOOLS: ToolDef[] = [
 export const ICONS = {
   undo: '<path d="M4 5v5h5"/><path d="M4.5 10A8 8 0 1 1 6 16.5"/>',
   hand: '<path d="M3 13c2.5-5 5-5 7.5 0s5 5 7.5 0"/><path d="M3 18c2.5-5 5-5 7.5 0s5 5 7.5 0" opacity=".45"/>',
-  clean: '<path d="M3 12h18"/>',
 };
 
 export const COLOR_LABELS: { [k in ShapeColor]: string } = {
@@ -684,4 +683,3 @@ export const STYLE_LABELS: { [k in ShapeStyle]: string } = {
   route: "Route",
 };
 
-export type { ShapeType };

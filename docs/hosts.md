@@ -32,7 +32,7 @@ The whole contract, grouped by what it is for. A new host implements exactly thi
 
 **Links.** `resolveLink` from link text to a path, `linkTo` from a path to the shortest unambiguous `[[link]]`, and `resourceUrl` so an `<img>` can show a file in the vault.
 
-**Places to put things.** `registerView` and `openView` for a panel in a tab or a sidebar; `registerAutoView` so a note of a given type opens in a panel instead of as text, with `openNoteAsMarkdown` as the way back; `registerCompanion` for UI that rides on every Longhand panel; `registerOverlay` for UI over the whole window, which is where Nib sits.
+**Places to put things.** `registerView` and `openView` for a panel in a tab or a sidebar; `registerAutoView` so a note of a given type opens in a panel instead of as text, with `openNoteAsMarkdown` as the way back; `registerOverlay` for UI over the whole window, which is where Nib sits.
 
 **Ways in.** `registerCommand` for the command palette, `registerRibbon` for an always-visible button, `registerFileMenu` for right-click entries on files and folders.
 

@@ -6,6 +6,23 @@
 
 const PREFIX = /^(\d+)\s+/;
 
+/** "02 The Tin" to "The Tin"; a name without a prefix is returned as is. */
+export function stripPrefix(name: string): string {
+  return name.replace(PREFIX, "");
+}
+
+/** "02 The Tin" to its prefix and the rest; prefix "" when there is none. */
+export function splitPrefix(name: string): { prefix: string; rest: string } {
+  const m = PREFIX.exec(name);
+  return m ? { prefix: m[1] ?? "", rest: name.slice(m[0].length) } : { prefix: "", rest: name };
+}
+
+/** The numeric prefix as a number, or null. */
+export function prefixNumber(name: string): number | null {
+  const m = PREFIX.exec(name);
+  return m ? Number(m[1]) : null;
+}
+
 /** A safe file name from a title, with the spec's character rules. */
 export function safeName(title: string): string {
   const cleaned = title

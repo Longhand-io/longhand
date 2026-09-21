@@ -13,7 +13,7 @@ import type { ViewHandle } from "../../host/host.js";
 import { SHAPE_COLORS, SHAPE_STYLES, type Pin, type Shape, type ShapeColor, type ShapeStyle } from "../../core/spec.js";
 import { createPlaceCard, type PlaceCard } from "./card.js";
 import { COLOR_LABELS, ICONS, STYLE_LABELS, TOOLS, createDrawLayer, type Tool } from "./draw.js";
-import { MapModel, type ResolvedMap } from "./model.js";
+import { clean as cleanShape, MapModel, type ResolvedMap } from "./model.js";
 
 const DRAG_THRESHOLD = 4; // px before a press becomes a drag
 const NUDGE = 0.005; // arrow-key step in fractions
@@ -36,7 +36,7 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     ? "Tap a pin for its scenes. Press and hold the map to add one."
     : "Hover a pin for its scenes, click to open its note, drag to move it. Double-click the map to add a pin, right-click one to remove it.";
   const edit = document.createElement("button");
-  edit.className = "lh-map-edit";
+  edit.className = "lh-map-tool lh-map-edit";
   edit.type = "button";
   edit.textContent = "Edit note";
   edit.title = "Open this map's note as text";
@@ -138,17 +138,16 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     if (s) void selectedPatch({ hand: s.hand ? undefined : true });
   });
   const propSwatches = swatchRow((c) => void selectedPatch({ color: c ?? undefined }));
-  const propLink = document.createElement("button");
-  propLink.type = "button";
-  propLink.className = "lh-map-tool";
-  const propUnlink = document.createElement("button");
-  propUnlink.type = "button";
-  propUnlink.className = "lh-map-tool";
-  propUnlink.textContent = "Unlink";
-  const propDelete = document.createElement("button");
-  propDelete.type = "button";
-  propDelete.className = "lh-map-tool lh-map-tool-danger";
-  propDelete.textContent = "Delete";
+  const textButton = (label: string, extraClass = ""): HTMLButtonElement => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `lh-map-tool${extraClass ? " " + extraClass : ""}`;
+    b.textContent = label;
+    return b;
+  };
+  const propLink = textButton("Link to note…");
+  const propUnlink = textButton("Unlink");
+  const propDelete = textButton("Delete", "lh-map-tool-danger");
   props.append(propLabel, propStyle, propHand, propSwatches.el, propLink, propUnlink, propDelete);
 
   const scroll = document.createElement("div");
@@ -572,19 +571,3 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
   };
 }
 
-function cleanShape(s: Shape): Shape {
-  const out: Shape = { id: s.id, type: s.type };
-  if (s.x !== undefined) out.x = s.x;
-  if (s.y !== undefined) out.y = s.y;
-  if (s.r !== undefined) out.r = s.r;
-  if (s.w !== undefined) out.w = s.w;
-  if (s.h !== undefined) out.h = s.h;
-  if (s.points) out.points = s.points;
-  if (s.style) out.style = s.style;
-  if (s.color) out.color = s.color;
-  if (s.hand) out.hand = true;
-  if (s.label) out.label = s.label;
-  if (s.to) out.to = s.to;
-  if (s.tags && s.tags.length) out.tags = s.tags;
-  return out;
-}

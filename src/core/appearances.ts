@@ -9,7 +9,8 @@
 import * as fm from "./frontmatter.js";
 import type { Core } from "./modules.js";
 import type { Document } from "./spec.js";
-import { baseName, parseWikilink } from "./wikilink.js";
+import { stripPrefix } from "./naming.js";
+import { baseName, resolveLinkText } from "./wikilink.js";
 
 export interface Appearance {
   doc: Document;
@@ -56,8 +57,7 @@ export async function readSubject(core: Core, path: string): Promise<Subject> {
   if (Array.isArray(attRaw)) {
     for (const a of attRaw) {
       if (typeof a !== "string") continue;
-      const link = parseWikilink(a);
-      const resolved = core.host.resolveLink(link ? link.target : a, path);
+      const resolved = resolveLinkText(core.host.resolveLink.bind(core.host), a, path);
       if (resolved) attachments.push(resolved);
     }
   }
@@ -138,11 +138,7 @@ async function scan(core: Core, subject: Subject, mode: Mode): Promise<Appearanc
 export function placesLinkTo(core: Core, doc: Document, subjectPath: string): boolean {
   const places = fm.get(doc.fields, "places");
   if (!Array.isArray(places)) return false;
-  return places.some((p) => {
-    if (typeof p !== "string") return false;
-    const link = parseWikilink(p);
-    return core.host.resolveLink(link ? link.target : p, doc.path) === subjectPath;
-  });
+  return places.some((p) => typeof p === "string" && resolveLinkText(core.host.resolveLink.bind(core.host), p, doc.path) === subjectPath);
 }
 
 interface Flattened {
@@ -209,11 +205,7 @@ export function sentenceAround(plain: string, start: number, end: number): { tex
   return { text, start: Math.max(0, start - sStart - lead), end: Math.max(0, end - sStart - lead) };
 }
 
-const PREFIX = /^\d+\s+/;
-
-export function stripPrefix(name: string): string {
-  return name.replace(PREFIX, "");
-}
+export { stripPrefix };
 
 /** "Part One, Chapter Two" from the folders between the project root and the file. */
 export function chapterOf(path: string, root: string): string {

@@ -7,8 +7,10 @@
 
 import { appearances, readSubject } from "../../core/appearances.js";
 import type { Core } from "../../core/modules.js";
-import { baseName, parseWikilink } from "../../core/wikilink.js";
-import { words, type Cite } from "./answers.js";
+import { stripPrefix } from "../../core/naming.js";
+import { words } from "../../core/text.js";
+import { baseName, linkLabel, resolveLinkText } from "../../core/wikilink.js";
+import type { Cite } from "./answers.js";
 
 export interface Nudge {
   /** stable per fact, so it is shown once per session */
@@ -38,10 +40,9 @@ async function mapNudges(core: Core, path: string): Promise<Nudge[]> {
   const broken: string[] = [];
   const links = [...note.pins.map((p) => ({ to: p.to, label: p.label })), ...note.shapes.filter((s) => s.to).map((s) => ({ to: s.to!, label: s.label }))];
   for (const l of links) {
-    const link = parseWikilink(l.to);
-    const resolved = core.host.resolveLink(link ? link.target : l.to, path);
-    if (!resolved) broken.push(l.label ?? (link ? link.target : l.to));
-    else if (!targets.has(resolved)) targets.set(resolved, l.label ?? baseName(resolved).replace(/^\d+\s+/, ""));
+    const resolved = resolveLinkText(core.host.resolveLink.bind(core.host), l.to, path);
+    if (!resolved) broken.push(l.label ?? linkLabel(l.to));
+    else if (!targets.has(resolved)) targets.set(resolved, l.label ?? stripPrefix(baseName(resolved)));
   }
   if (broken.length) {
     out.push({
@@ -102,7 +103,7 @@ async function sceneNudges(core: Core, path: string): Promise<Nudge[]> {
   const out: Nudge[] = [];
   const text = await core.host.readFile(path);
   if (words(text) === 0) {
-    out.push({ key: `${path}:empty`, kind: "empty", text: `${doc.title ?? baseName(path)} has no text yet.`, cites: [] });
+    out.push({ key: `${path}:empty`, kind: "empty", text: `${doc.title ?? stripPrefix(baseName(path))} has no text yet.`, cites: [] });
   }
   return out;
 }

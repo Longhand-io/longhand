@@ -7,13 +7,13 @@
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import { projectPicker, rememberProject } from "../../core/picker.js";
-import { ask, chooseScope, perform, projectsToOpen, scopeOf, type Answer } from "./answers.js";
+import { ask, chooseScope, perform, projectsToOpen, scopeOf, type Answer, type Cite, type Scope } from "./answers.js";
 import { nudgesFor, type Nudge } from "./nudges.js";
 
 export const NIB_VIEW_TYPE = "longhand-nib";
 
-/** Open sidebar chats, so the corner nib can hand a question to one that already exists. */
-const live = new Set<{ submit: (q: string) => Promise<void>; say: (text: string) => void }>();
+/** The open sidebar chat, if any, so the corner nib can hand it a question. */
+let live: { submit: (q: string) => Promise<void>; say: (text: string) => void } | null = null;
 /** A question waiting for the sidebar to mount, with what Nib said in the corner just before. */
 let pending: { question: string; preface: string | null } | null = null;
 /** Nudges already spoken this session, by key. Said once, then never again. */
@@ -24,7 +24,7 @@ const history: Turn[] = [];
 
 /** Put a question to Nib in the sidebar, opening it if needed. `preface` is what Nib just said in the corner. */
 export async function askInSidebar(core: Core, question: string, contextPath = "", preface: string | null = null): Promise<void> {
-  const view = [...live][0];
+  const view = live;
   if (view) {
     if (preface) view.say(preface);
     await core.host.openView(NIB_VIEW_TYPE, { path: contextPath });
@@ -64,7 +64,41 @@ const NIB_CHARACTER =
   '<path class="lh-nc-scribble" d="M30 86 q6 -8 12 0 t12 0 t12 0 t12 0"/>' +
   '</g></svg>';
 
-export type NibState = "idle" | "noticed" | "thinking" | "found" | "notnow" | "doubletake" | "joke";
+const STATES = ["idle", "noticed", "thinking", "found", "notnow", "doubletake", "joke"] as const;
+type NibState = (typeof STATES)[number];
+
+/** One clickable row for a cited note, shared by the sidebar's answers and the corner bubble. */
+function citeRow(core: Core, c: Cite): HTMLElement {
+  const li = document.createElement("li");
+  li.tabIndex = 0;
+  li.setAttribute("role", "link");
+  const label = document.createElement("span");
+  label.className = "lh-nib-cite-label";
+  label.textContent = `Open ${c.label}`;
+  li.appendChild(label);
+  if (c.detail) {
+    const d = document.createElement("span");
+    d.className = "lh-nib-cite-detail";
+    d.textContent = c.detail;
+    li.appendChild(d);
+  }
+  const open = () => void core.host.openNote(c.path);
+  li.addEventListener("click", open);
+  li.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") open();
+  });
+  return li;
+}
+
+/** An answer card with one line of Nib's. */
+function nibCard(text: string): HTMLElement {
+  const card = document.createElement("div");
+  card.className = "lh-nib-answer";
+  const p = document.createElement("p");
+  p.textContent = text;
+  card.appendChild(p);
+  return card;
+}
 
 /** What the sidebar tells the character: it is working, it has answered, it told the joke. */
 type NibEvent = "asking" | "answered" | "joke";
@@ -139,12 +173,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
 
   const say = (text: string) => {
     history.push({ nib: text });
-    const card = document.createElement("div");
-    card.className = "lh-nib-answer";
-    const p = document.createElement("p");
-    p.textContent = text;
-    card.appendChild(p);
-    transcript.appendChild(card);
+    transcript.appendChild(nibCard(text));
     transcript.scrollTop = transcript.scrollHeight;
   };
 
@@ -184,27 +213,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
     if (a.cites.length) {
       const list = document.createElement("ul");
       list.className = "lh-nib-cites";
-      for (const c of a.cites) {
-        const li = document.createElement("li");
-        li.tabIndex = 0;
-        li.setAttribute("role", "link");
-        const label = document.createElement("span");
-        label.className = "lh-nib-cite-label";
-        label.textContent = c.map ? `Open ${c.label} as a map` : `Open ${c.label}`;
-        li.appendChild(label);
-        if (c.detail) {
-          const d = document.createElement("span");
-          d.className = "lh-nib-cite-detail";
-          d.textContent = c.detail;
-          li.appendChild(d);
-        }
-        const open = () => (c.map ? void core.host.openView("longhand-map", { path: c.path }) : void core.host.openNote(c.path));
-        li.addEventListener("click", open);
-        li.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter") open();
-        });
-        list.appendChild(li);
-      }
+      for (const c of a.cites) list.appendChild(citeRow(core, c));
       card.appendChild(list);
     }
     if (a.actions && a.actions.length) {
@@ -235,12 +244,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   const replay = () => {
     for (const turn of history) {
       if ("nib" in turn) {
-        const card = document.createElement("div");
-        card.className = "lh-nib-answer";
-        const p = document.createElement("p");
-        p.textContent = turn.nib;
-        card.appendChild(p);
-        transcript.appendChild(card);
+        transcript.appendChild(nibCard(turn.nib));
       } else {
         youLine(turn.you);
         const card = document.createElement("div");
@@ -259,31 +263,13 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
       scope.kind === "project" ? `Looking at ${scope.title}. Off the network.` : scope.kind === "vault" ? "Looking across the whole vault. Off the network." : "Nothing is open. Off the network.";
     if (scope.kind === "project") rememberProject(scope.root);
     await picker.refresh(scope.kind === "project" ? scope.root : null);
+    return scope;
   };
 
   const greet = async () => {
-    await updateScopeLine();
-    const scope = await scopeOf(core, contextPath || core.host.activeFile());
+    const scope = await updateScopeLine();
     if (history.length) return;
-    const card = document.createElement("div");
-    card.className = "lh-nib-answer";
-    const p = document.createElement("p");
-    const doc = contextPath ? await core.projects.byPath(contextPath) : null;
-    const title = doc?.title ?? contextPath;
-    if (scope.kind === "none") {
-      const projects = await projectsToOpen(core);
-      p.textContent = projects.length
-        ? `Nothing is open. Which would you like: ${projects.map((x) => x.title).join(", ")}?`
-        : "Nothing is open, and there is no project here yet. New… on the ribbon makes a scene, a map, or a character to start with.";
-    } else if (doc?.type === "map") {
-      p.textContent = `You are on ${title}. Ask what is set at a place, who has been where, or which pins have no scene yet.`;
-    } else if (doc) {
-      p.textContent = `You are in ${title}${scope.kind === "vault" ? ", outside any project, so I will look across the whole vault" : ""}. Ask who is in it, how long it is, or where something was last seen.`;
-    } else {
-      p.textContent = `Looking at ${scope.title}. Ask where someone was last seen, what is set at a place, or how long the manuscript is.`;
-    }
-    card.appendChild(p);
-    transcript.appendChild(card);
+    transcript.appendChild(nibCard(await greetingFor(core, scope, contextPath, "sidebar")));
   };
 
   const renderChips = async () => {
@@ -306,7 +292,7 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
 
   const unsubscribe = core.host.onFileChanged(() => void renderChips());
   const handle = { submit, say };
-  live.add(handle);
+  live = handle;
   replay();
   void greet()
     .then(renderChips)
@@ -323,11 +309,27 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
 
   return {
     destroy() {
-      live.delete(handle);
+      if (live === handle) live = null;
       unsubscribe();
       root.remove();
     },
   };
+}
+
+/** What Nib says first, for the sidebar and the corner: where it is looking and what to ask. */
+async function greetingFor(core: Core, scope: Scope, contextPath: string, where: "sidebar" | "corner"): Promise<string> {
+  const me = where === "corner" ? "Ask me" : "Ask";
+  if (scope.kind === "none") {
+    const projects = await projectsToOpen(core);
+    if (!projects.length) return "Nothing is open, and there is no project here yet. New… on the ribbon can make one.";
+    return where === "corner" ? "Nothing is open. Which would you like?" : `Nothing is open. Which would you like: ${projects.map((x) => x.title).join(", ")}?`;
+  }
+  const doc = contextPath ? await core.projects.byPath(contextPath) : null;
+  const title = doc?.title ?? contextPath;
+  if (!doc) return `Looking at ${scope.title}. ${me} where someone was last seen, what is set at a place, or how long the manuscript is.`;
+  if (doc.type === "map") return `You are on ${title}. ${me} what is set at a place, who has been where, or which pins have no scene yet.`;
+  const outside = scope.kind === "vault" ? ", outside any project, so I will look across the whole vault" : "";
+  return `You are in ${title}${outside}. ${me} who is in it, how long it is, or where someone was last seen.`;
 }
 
 /** A few questions that fit what is on screen, so the first click shows what Nib can do. */
@@ -383,7 +385,6 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
   button.innerHTML = NIB_CHARACTER;
 
   // ---- the character's states, each fired by something real ----
-  const STATES: NibState[] = ["idle", "noticed", "thinking", "found", "notnow", "doubletake", "joke"];
   let stateTimer: ReturnType<typeof setTimeout> | null = null;
   const restingState = (): NibState => (current ? "noticed" : "idle");
   const setState = (s: NibState, thenRestAfterMs?: number) => {
@@ -477,21 +478,7 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
     bubbleCites.replaceChildren();
     if (current) {
       bubbleText.textContent = current.text;
-      for (const c of current.cites.slice(0, 3)) {
-        const li = document.createElement("li");
-        const label = document.createElement("span");
-        label.className = "lh-nib-cite-label";
-        label.textContent = `Open ${c.label}`;
-        li.appendChild(label);
-        if (c.detail) {
-          const d = document.createElement("span");
-          d.className = "lh-nib-cite-detail";
-          d.textContent = c.detail;
-          li.appendChild(d);
-        }
-        li.addEventListener("click", () => void core.host.openNote(c.path));
-        bubbleCites.appendChild(li);
-      }
+      for (const c of current.cites.slice(0, 3)) bubbleCites.appendChild(citeRow(core, c));
       askBtn.hidden = !current.ask;
       askBtn.textContent = current.ask ?? "";
       dismissBtn.hidden = false;
@@ -504,14 +491,11 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
   };
 
   const look = async () => {
-    const doc = contextPath ? await core.projects.byPath(contextPath) : null;
-    const title = doc?.title ?? contextPath;
     const scope = await scopeOf(core, contextPath || null);
     openChips.replaceChildren();
+    greeting = await greetingFor(core, scope, contextPath, "corner");
     if (scope.kind === "none") {
-      const projects = await projectsToOpen(core);
-      greeting = projects.length ? "Nothing is open. Which would you like?" : "Nothing is open, and there is no project here yet.";
-      for (const p of projects.slice(0, 6)) {
+      for (const p of (await projectsToOpen(core)).slice(0, 6)) {
         const b = document.createElement("button");
         b.type = "button";
         b.className = "lh-nib-chip";
@@ -519,12 +503,6 @@ export function mountNibDock(core: Core, el: HTMLElement, initialContext: string
         b.addEventListener("click", () => void core.host.openNote(p.notePath));
         openChips.appendChild(b);
       }
-    } else {
-      greeting = !doc
-        ? `Looking at ${scope.title}. Ask me where someone was last seen, what is set at a place, or how long the manuscript is.`
-        : doc.type === "map"
-          ? `You are on ${title}. Ask me what is set at a place, or who has been where.`
-          : `You are in ${title}${scope.kind === "vault" ? ", outside any project; I will look across the whole vault" : ""}. Ask me who is in it, or where someone was last seen.`;
     }
     let nudges: Nudge[] = [];
     try {

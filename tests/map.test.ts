@@ -131,8 +131,9 @@ test("module registers the view and three commands; open as map only when the ac
   await mapModule.register(core);
   assert.ok(host.views.has("longhand-map"));
   assert.equal(host.autoViews.length, 1);
-  assert.equal(host.autoViews[0]!.when("Novel/Maps/Whitby.md"), true);
-  assert.equal(host.autoViews[0]!.when("Novel/Manuscript/02 The Tin.md"), false);
+  assert.equal(host.autoViews[0]!.when("Novel/Maps/Whitby.md", null), true);
+  assert.equal(host.autoViews[0]!.when("Novel/Manuscript/02 The Tin.md", null), false);
+  assert.equal(host.autoViews[0]!.when("Novel/Maps/Fresh.md", "map"), true, "a type the host read itself counts");
   assert.equal(host.fileMenu.length, 2);
   assert.equal(host.fileMenu[0]!.check("Novel/Maps/Whitby.md"), true);
   assert.equal(host.fileMenu[1]!.on, "folder");

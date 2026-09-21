@@ -80,7 +80,6 @@ test("on the map: pins and shapes that link to the note", async () => {
   assert.equal(a.kind, "on-map");
   assert.equal(a.text, "Stillwater is on Harrowmere.");
   assert.equal(a.cites[0]?.detail, "1 pin, 1 shape");
-  assert.equal(a.cites[0]?.map, true);
   assert.match((await ask(core, "is Harrow Wood on the map")).text, /not on any map/);
 });
 
