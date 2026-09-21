@@ -45,12 +45,26 @@ export interface Scope {
   title: string;
 }
 
+/** A project the writer chose by hand, which wins until a note in another project opens. */
+let chosenRoot: string | null = null;
+
+export function chooseScope(root: string | null): void {
+  chosenRoot = root;
+}
+
 export async function scopeOf(core: Core, path: string | null = core.host.activeFile()): Promise<Scope> {
+  const project = path ? await core.projects.projectOf(path) : null;
+  if (project && chosenRoot !== null && project.root !== chosenRoot) chosenRoot = null;
+  const root = chosenRoot ?? project?.root ?? null;
+  if (root !== null) {
+    const p = (await core.projects.roots()).find((r) => r.root === root);
+    if (p) {
+      const note = await core.spec.read(p.notePath);
+      return { kind: "project", root: p.root, title: note.title ?? (p.root || "this vault") };
+    }
+  }
   if (!path) return { kind: "none", root: "", title: "" };
-  const project = await core.projects.projectOf(path);
-  if (!project) return { kind: "vault", root: "", title: "the whole vault" };
-  const note = await core.spec.read(project.notePath);
-  return { kind: "project", root: project.root, title: note.title ?? (project.root || "this vault") };
+  return { kind: "vault", root: "", title: "the whole vault" };
 }
 
 /** Every project with its title, for offering one to open. */

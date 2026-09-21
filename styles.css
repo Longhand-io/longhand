@@ -1491,3 +1491,46 @@
 .lh-root select.lh-binder-picker:hover {
   border-color: var(--lh-rule);
 }
+
+/* the shared project switcher, styled as a panel title */
+.lh-root select.lh-project-picker {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.15rem 0.4rem;
+  font-family: var(--lh-font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--lh-ink);
+  background: var(--lh-paper);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.lh-root select.lh-project-picker:hover {
+  border-color: var(--lh-rule);
+}
+
+.lh-root select.lh-project-picker[hidden] {
+  display: none;
+}
+
+.lh-tl-head .lh-project-picker {
+  flex: 0 1 auto;
+}
+
+.lh-nib-head {
+  flex-wrap: wrap;
+}
+
+.lh-nib-titles {
+  flex: 1;
+}
+
+.lh-root select.lh-nib-picker {
+  flex-basis: 100%;
+  font-size: 0.9rem;
+  margin-top: 0.2rem;
+}

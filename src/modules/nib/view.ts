@@ -6,7 +6,8 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
-import { ask, perform, projectsToOpen, scopeOf, type Answer } from "./answers.js";
+import { projectPicker, rememberProject } from "../../core/picker.js";
+import { ask, chooseScope, perform, projectsToOpen, scopeOf, type Answer } from "./answers.js";
 import { nudgesFor, type Nudge } from "./nudges.js";
 
 export const NIB_VIEW_TYPE = "longhand-nib";
@@ -81,12 +82,21 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
   head.className = "lh-nib-head";
   head.innerHTML = `<span class="lh-nib-mark">${NIB_MARK}</span>`;
   const title = document.createElement("div");
+  title.className = "lh-nib-titles";
   title.innerHTML = `<div class="lh-nib-title">Nib</div>`;
   const sub = document.createElement("div");
   sub.className = "lh-nib-sub";
   sub.textContent = "Answers from your files. Off the network.";
   title.appendChild(sub);
   head.appendChild(title);
+  // which project Nib looks at; follows the note you open, or your pick here
+  const picker = projectPicker(core, (c) => {
+    chooseScope(c.root);
+    void renderChips();
+    void updateScopeLine();
+  });
+  picker.el.classList.add("lh-nib-picker");
+  head.appendChild(picker.el);
 
   const transcript = document.createElement("div");
   transcript.className = "lh-nib-transcript";
@@ -243,10 +253,17 @@ export function mountNibView(core: Core, el: HTMLElement, contextPath = ""): Vie
     transcript.scrollTop = transcript.scrollHeight;
   };
 
-  const greet = async () => {
+  const updateScopeLine = async () => {
     const scope = await scopeOf(core, contextPath || core.host.activeFile());
     sub.textContent =
       scope.kind === "project" ? `Looking at ${scope.title}. Off the network.` : scope.kind === "vault" ? "Looking across the whole vault. Off the network." : "Nothing is open. Off the network.";
+    if (scope.kind === "project") rememberProject(scope.root);
+    await picker.refresh(scope.kind === "project" ? scope.root : null);
+  };
+
+  const greet = async () => {
+    await updateScopeLine();
+    const scope = await scopeOf(core, contextPath || core.host.activeFile());
     if (history.length) return;
     const card = document.createElement("div");
     card.className = "lh-nib-answer";

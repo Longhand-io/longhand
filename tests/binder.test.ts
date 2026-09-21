@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { createCore } from "../src/core/modules.js";
 import { childrenOf, nextName, nowIso, uniquePath } from "../src/core/naming.js";
 import { MemoryHost } from "../src/host/memory.js";
-import { binderModule, placeFor } from "../src/modules/binder/index.js";
+import { binderModule, KINDS, placeFor } from "../src/modules/binder/index.js";
 
 const doc = (id: string, type: string) => `---\nid: "${id}"\ntype: "${type}"\n---\n`;
 
@@ -63,7 +63,7 @@ test("New scene writes id, type, title, created, numbered after its siblings, an
   await binderModule.register(core);
   host.active = "Novel/Draft/01 Part One/02 The Tin.md";
   host.prompts.push("Verse");
-  await host.commands.get("new-text")!.run();
+  await host.commands.get("new-scene")!.run();
   const path = "Novel/Draft/01 Part One/03 Verse.md";
   const text = host.files.get(path);
   assert.ok(text, "note created at the next number");
@@ -77,13 +77,13 @@ test("New… asks for the kind; New here… uses the folder; New folder creates 
   await binderModule.register(core);
   assert.equal(host.ribbon.length, 2);
   assert.equal(host.views.get("longhand-binder")?.placement, "left");
-  host.choices.push("character");
+  host.choices.push(KINDS.find((k) => k.label === "Character"));
   host.prompts.push("Tom");
   await host.commands.get("new")!.run();
   assert.ok(host.files.has("Novel/People/Tom.md"));
   assert.ok(host.files.get("Novel/People/Tom.md")!.includes('type: "character"'));
 
-  host.choices.push("text");
+  host.choices.push(KINDS.find((k) => k.label === "Scene"));
   host.prompts.push("Prologue");
   await host.fileMenu.find((m) => m.on === "folder")!.run("Novel/Draft/02 Part Two");
   assert.ok(host.files.has("Novel/Draft/02 Part Two/02 Prologue.md"));
@@ -91,4 +91,17 @@ test("New… asks for the kind; New here… uses the folder; New folder creates 
   host.prompts.push("Part Three");
   await host.commands.get("new-folder")!.run();
   assert.ok(host.folders.includes("Novel/Draft/03 Part Three"), "no active note, so the manuscript root");
+});
+
+test("New project makes a folder with a project note and a first chapter, and the panels can find it", async () => {
+  const host = new MemoryHost({});
+  const core = createCore(host);
+  await binderModule.register(core);
+  host.choices.push(KINDS.find((k) => k.label === "Project"));
+  host.prompts.push("Saltmarsh: a novel");
+  await host.commands.get("new")!.run();
+  const note = host.files.get("Saltmarsh- a novel/_Project.md");
+  assert.ok(note && note.includes("longhand: 1") && note.includes('title: "Saltmarsh: a novel"'));
+  assert.ok(host.files.has("Saltmarsh- a novel/Manuscript/01 Chapter One.md"));
+  assert.deepEqual((await core.projects.roots()).map((r) => r.root), ["Saltmarsh- a novel"]);
 });

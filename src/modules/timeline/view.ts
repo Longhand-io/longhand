@@ -7,6 +7,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
+import { currentProject, projectPicker, rememberProject } from "../../core/picker.js";
 import { fromDays } from "../../core/storydate.js";
 import { TimelineModel, type Item, type SceneRef, type Timeline } from "./model.js";
 
@@ -14,15 +15,20 @@ const DRAG_THRESHOLD = 4;
 type Axis = "story" | "manuscript";
 
 export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: string): ViewHandle {
-  const model = new TimelineModel(core, anchorPath);
+  let model = new TimelineModel(core, anchorPath);
   const root = document.createElement("div");
   root.className = "lh-root lh-tl";
   el.appendChild(root);
 
   const head = document.createElement("div");
   head.className = "lh-tl-head";
+  const picker = projectPicker(core, (c) => {
+    model = new TimelineModel(core, c.notePath);
+    void render();
+  });
   const title = document.createElement("div");
   title.className = "lh-tl-title";
+  title.hidden = true;
   const hint = document.createElement("div");
   hint.className = "lh-tl-hint";
   const axisRow = document.createElement("div");
@@ -62,7 +68,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
   const zoomFit = zoomButton("Fit", "The whole story in the window", () => setZoom(1));
   const zoomIn = zoomButton("+", "Zoom in", () => setZoom(zoom * 1.6));
   zoomRow.append(zoomLabel, zoomOut, zoomFit, zoomIn);
-  head.append(title, hint, axisRow, zoomRow);
+  head.append(picker.el, title, hint, axisRow, zoomRow);
   let axis: Axis = "story";
   let axisChosen = false;
   const setZoom = (z: number) => {
@@ -100,6 +106,8 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     const tl = await model.load();
     current = tl;
     title.textContent = `${tl.projectTitle}`;
+    rememberProject(tl.root);
+    await picker.refresh(tl.root);
     board.replaceChildren();
     const dated = tl.lanes.some((l) => l.items.length > 0);
     if (!axisChosen) axis = dated ? "story" : "manuscript";

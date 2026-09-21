@@ -7,7 +7,7 @@
 
 import type { Core, Module } from "../../core/modules.js";
 import type { NoteType } from "../../core/spec.js";
-import { childrenOf, dirOf, newId, nextName, nowIso, uniquePath } from "../../core/naming.js";
+import { childrenOf, dirOf, newId, nextName, nowIso, safeName, uniquePath } from "../../core/naming.js";
 import { newMapNote } from "../map/model.js";
 import { mountBinderView } from "./view.js";
 
@@ -27,6 +27,7 @@ export const KINDS: NewKind[] = [
   { id: "setting", label: "Setting", description: "A place that is not a map; pins and shapes can point at it" },
   { id: "event", label: "Event", description: "Something on the timeline that is not a scene" },
   { id: "map", label: "Map", description: "A picture or a blank canvas with pins and shapes" },
+  { id: "folder", label: "Project", description: "A new book: a folder with a project note and a Manuscript folder" },
 ];
 
 export const binderModule: Module = {
@@ -47,7 +48,24 @@ export const binderModule: Module = {
     host.registerCommand({ id: "binder-open", name: "Open binder", run: () => host.openView(BINDER_VIEW, { path: "" }) });
     host.registerRibbon("list-tree", "Open binder", () => host.openView(BINDER_VIEW, { path: "" }));
 
-    const create = async (kind: NoteType, atFolder?: string) => {
+    const createProject = async (atFolder?: string) => {
+      const title = await host.prompt("Project title", "");
+      if (!title) return;
+      const base = atFolder ? `${atFolder}/` : "";
+      const root = uniquePath(host.exists.bind(host), `${base}${safeName(title)}`);
+      await host.createFolder(root);
+      await host.createFolder(`${root}/Manuscript`);
+      const note = core.spec.newNote(
+        { longhand: 1, title, labels: ["Red", "Blue", "Green"], statuses: ["To Do", "First Draft", "Revised", "Done"], keywords: [] },
+        `# ${title}\n\nThe project note. Labels are the threads on the timeline; the calendar block, if you add one, says how story dates read.\n`,
+      );
+      await host.writeFile(`${root}/_Project.md`, note);
+      await host.writeFile(`${root}/Manuscript/01 Chapter One.md`, core.spec.newNote({ id: newId(), type: "text", title: "Chapter One", created: nowIso() }, ""));
+      await host.openNoteAsMarkdown(`${root}/Manuscript/01 Chapter One.md`);
+    };
+
+    const create = async (kind: NoteType, atFolder?: string, label?: string) => {
+      if (label === "Project") return createProject(atFolder);
       const title = await host.prompt(`${KINDS.find((k) => k.id === kind)?.label ?? "Note"} title`, "");
       if (!title) return;
       const folder = atFolder !== undefined ? atFolder : await placeFor(core, kind);
@@ -74,10 +92,10 @@ export const binderModule: Module = {
       await host.openNoteAsMarkdown(path);
     };
 
-    const pickKind = async (): Promise<NoteType | null> =>
+    const pickKind = async (): Promise<NewKind | null> =>
       host.choose(
         "New…",
-        KINDS.map((k) => ({ label: k.label, detail: k.description, value: k.id })),
+        KINDS.map((k) => ({ label: k.label, detail: k.description, value: k })),
       );
 
     host.registerCommand({
@@ -85,16 +103,16 @@ export const binderModule: Module = {
       name: "New…",
       run: async () => {
         const kind = await pickKind();
-        if (kind) await create(kind);
+        if (kind) await create(kind.id, undefined, kind.label);
       },
     });
     for (const k of KINDS) {
       if (k.id === "map") continue; // the map module owns New map
-      host.registerCommand({ id: `new-${k.id}`, name: `New ${k.label.toLowerCase()}`, run: () => create(k.id) });
+      host.registerCommand({ id: `new-${k.label.toLowerCase()}`, name: `New ${k.label.toLowerCase()}`, run: () => create(k.id, undefined, k.label) });
     }
-    host.registerRibbon("file-plus", "New scene, folder, character, setting, event, or map", async () => {
+    host.registerRibbon("file-plus", "New scene, folder, character, setting, event, map, or project", async () => {
       const kind = await pickKind();
-      if (kind) await create(kind);
+      if (kind) await create(kind.id, undefined, kind.label);
     });
     host.registerFileMenu({
       label: "New here…",
@@ -103,7 +121,7 @@ export const binderModule: Module = {
       check: () => true,
       run: async (folder) => {
         const kind = await pickKind();
-        if (kind) await create(kind, folder === "/" ? "" : folder);
+        if (kind) await create(kind.id, folder === "/" ? "" : folder, kind.label);
       },
     });
   },

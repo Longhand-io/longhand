@@ -7,6 +7,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
+import { currentProject, projectPicker, rememberProject } from "../../core/picker.js";
 import { formatCount } from "../../core/text.js";
 import { applyMove, buildTree, planMove, type Node } from "./tree.js";
 
@@ -17,18 +18,14 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
   const head = document.createElement("div");
   head.className = "lh-binder-head";
   // the project switcher: every project in the vault; follows the note you open, or your pick
-  const picker = document.createElement("select");
-  picker.className = "lh-binder-picker";
-  picker.title = "Which project the binder shows";
-  picker.setAttribute("aria-label", "Project");
-  const total = document.createElement("div");
-  total.className = "lh-binder-total";
-  head.append(picker, total);
-  picker.addEventListener("change", () => {
-    projectRoot = picker.value;
+  const picker = projectPicker(core, (c) => {
+    projectRoot = c.root;
     pinned = true;
     void render();
   });
+  const total = document.createElement("div");
+  total.className = "lh-binder-total";
+  head.append(picker.el, total);
   const list = document.createElement("div");
   list.className = "lh-binder-tree";
   root.append(head, list);
@@ -44,22 +41,12 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
 
   const render = async () => {
     if (disposed) return;
-    const roots = await core.projects.roots();
-    const titles = new Map<string, string>();
-    for (const r of roots) titles.set(r.root, (await core.spec.read(r.notePath)).title ?? (r.root || "Vault"));
-    const anchor = activePath ?? "";
-    const project = anchor ? await core.projects.projectOf(anchor) : null;
-    if (project && !pinned) projectRoot = project.root;
-    if (projectRoot === null || !titles.has(projectRoot)) projectRoot = project?.root ?? roots[0]?.root ?? null;
-    picker.replaceChildren();
-    for (const r of roots) {
-      const o = document.createElement("option");
-      o.value = r.root;
-      o.textContent = titles.get(r.root) ?? r.root;
-      picker.appendChild(o);
+    if (!pinned || projectRoot === null) {
+      const c = await currentProject(core, activePath);
+      projectRoot = c?.root ?? null;
     }
-    if (projectRoot !== null) picker.value = projectRoot;
-    picker.hidden = roots.length === 0;
+    if (projectRoot !== null) rememberProject(projectRoot);
+    await picker.refresh(projectRoot);
     if (projectRoot === null) {
       total.textContent = "";
       list.replaceChildren();
