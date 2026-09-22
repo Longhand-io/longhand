@@ -7,11 +7,11 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
+import { button, chip, labelDot, pressDrag, setActive } from "../../core/dom.js";
 import { projectPicker } from "../../core/picker.js";
 import { formatStoryDate } from "../../core/storydate.js";
 import { TimelineModel, type Item, type SceneRef, type Timeline } from "./model.js";
 
-const DRAG_THRESHOLD = 4;
 type Axis = "story" | "manuscript";
 
 export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: string): ViewHandle {
@@ -29,15 +29,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
   axisRow.className = "lh-tl-axis";
   const axisLabel = document.createElement("span");
   axisLabel.textContent = "Axis";
-  const toolButton = (label: string, title: string, fn: () => void) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "lh-map-tool";
-    b.textContent = label;
-    b.title = title;
-    b.addEventListener("click", fn);
-    return b;
-  };
+  const toolButton = button;
   const axisButtons = new Map<Axis, HTMLButtonElement>();
   for (const [id, label] of [["manuscript", "Manuscript order"], ["story", "Story date"]] as [Axis, string][]) {
     axisButtons.set(
@@ -68,7 +60,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     const before = scroll.scrollLeft / Math.max(1, board.clientWidth);
     zoom = Math.min(64, Math.max(1, z));
     board.style.width = zoom === 1 ? "" : `${zoom * 100}%`;
-    zoomFit.classList.toggle("lh-map-tool-active", zoom === 1);
+    setActive(zoomFit, zoom === 1);
     layoutPins();
     scroll.scrollLeft = before * board.clientWidth;
   };
@@ -102,7 +94,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     board.replaceChildren();
     const dated = tl.lanes.some((l) => l.items.length > 0);
     if (!axisChosen) axis = dated ? "story" : "manuscript";
-    for (const [id, b] of axisButtons) b.classList.toggle("lh-map-tool-active", id === axis);
+    for (const [id, b] of axisButtons) setActive(b, id === axis);
     hint.textContent =
       axis === "story"
         ? `Story date${tl.calendar.kind === "gregorian" ? "" : tl.calendar.kind === "custom" ? ", this project's own calendar" : ", counted"}. Click a pin to open its scene, drag it to change the date. Events are dashed.`
@@ -189,12 +181,9 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
       label.textContent = `${tl.undated.length} undated ${tl.undated.length === 1 ? "scene" : "scenes"}:`;
       tray.appendChild(label);
       for (const d of tl.undated) {
-        const chip = document.createElement("button");
-        chip.type = "button";
-        chip.className = "lh-nib-chip";
-        chip.textContent = d.title ?? d.path;
-        chip.title = "Give this scene a story date";
-        chip.addEventListener("click", async () => {
+        const c = chip(d.title ?? d.path);
+        c.title = "Give this scene a story date";
+        c.addEventListener("click", async () => {
           const v = await core.host.prompt(`Story date for ${d.title ?? d.path}: ${tl.calendar.hint}`, "");
           if (!v) return;
           const parsed = tl.calendar.parse(v);
@@ -204,7 +193,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
           }
           await write(() => model.setDate(d.path, parsed.days, parsed.precision));
         });
-        tray.appendChild(chip);
+        tray.appendChild(c);
       }
     }
   };
@@ -358,42 +347,20 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     const when = model.labelFor(item.start) + (item.end ? ` to ${model.labelFor(item.end)}` : "");
     pin.title = item.synopsis ? `${when}. ${item.synopsis}` : when;
 
-    let startX = 0;
-    let pressed = false;
-    let dragging = false;
-    pin.addEventListener("pointerdown", (ev) => {
-      if (ev.button !== 0) return;
-      pressed = true;
-      dragging = false;
-      startX = ev.clientX;
-      pin.setPointerCapture(ev.pointerId);
-      ev.preventDefault();
-    });
-    pin.addEventListener("pointermove", (ev) => {
-      if (!pressed) return;
-      if (!dragging && Math.abs(ev.clientX - startX) < DRAG_THRESHOLD) return;
-      dragging = true;
-      pin.classList.add("lh-tl-pin-dragging");
-      const track = pin.parentElement ?? board;
-      pin.style.left = `${fraction(daysAt(ev.clientX, track)) * 100}%`;
-      pin.title = model.labelFor({ ...item.start, days: Math.round(daysAt(ev.clientX, track)) });
-    });
-    const release = async (ev: PointerEvent) => {
-      if (!pressed) return;
-      pressed = false;
-      pin.releasePointerCapture(ev.pointerId);
-      pin.classList.remove("lh-tl-pin-dragging");
-      if (dragging) {
-        const days = daysAt(ev.clientX, pin.parentElement ?? board);
-        await write(() => model.setDate(item.doc.path, days, item.start.precision));
-      } else {
-        await core.host.openNote(item.doc.path);
-      }
-    };
-    pin.addEventListener("pointerup", (ev) => void release(ev));
-    pin.addEventListener("pointercancel", () => {
-      pressed = false;
-      void render();
+    pressDrag(pin, {
+      horizontal: true,
+      onDragStart: () => pin.classList.add("lh-tl-pin-dragging"),
+      onDrag: (ev) => {
+        const track = pin.parentElement ?? board;
+        pin.style.left = `${fraction(daysAt(ev.clientX, track)) * 100}%`;
+        pin.title = model.labelFor({ ...item.start, days: Math.round(daysAt(ev.clientX, track)) });
+      },
+      onDrop: async (ev) => {
+        pin.classList.remove("lh-tl-pin-dragging");
+        await write(() => model.setDate(item.doc.path, daysAt(ev.clientX, pin.parentElement ?? board), item.start.precision));
+      },
+      onTap: () => core.host.openNote(item.doc.path),
+      onCancel: () => void render(),
     });
     pin.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
@@ -447,12 +414,7 @@ export function laneColor(index: number): string {
 function labelled(tag: "span" | "div", className: string, name: string, color: number | null): HTMLElement {
   const el = document.createElement(tag);
   el.className = className;
-  if (color !== null) {
-    const dot = document.createElement("i");
-    dot.className = "lh-tl-lab";
-    dot.style.background = laneColor(color);
-    el.appendChild(dot);
-  }
+  if (color !== null) el.appendChild(labelDot(laneColor(color)));
   el.append(document.createTextNode(name));
   return el;
 }

@@ -8,7 +8,9 @@ import { childrenOf, nextName, nowIso, uniquePath } from "../src/core/naming.js"
 import { MemoryHost } from "../src/host/memory.js";
 import { binderModule, KINDS, placeFor } from "../src/modules/binder/index.js";
 
-const doc = (id: string, type: string) => `---\nid: "${id}"\ntype: "${type}"\n---\n`;
+import { note } from "./fixtures.js";
+
+const doc = (id: string, type: string) => note({ id, type });
 
 function vault(): MemoryHost {
   return new MemoryHost({

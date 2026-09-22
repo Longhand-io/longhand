@@ -8,19 +8,21 @@ import { words } from "../src/core/text.js";
 import { MemoryHost } from "../src/host/memory.js";
 import { applyMove, buildTree, planMove, splitPrefix } from "../src/modules/binder/tree.js";
 
-const doc = (id: string, title: string, body = "", extra = "") => `---\nid: "${id}"\ntype: "text"\ntitle: "${title}"\n${extra}---\n${body}\n`;
+import { note, scene } from "./fixtures.js";
+
+const doc = (id: string, title: string, body = "", extra: { [k: string]: string } = {}) => scene(id, title, body ? body + "\n" : "", extra);
 
 function vault(): MemoryHost {
   return new MemoryHost({
     "Novel/_Project.md": '---\nlonghand: 1\ntitle: "Harrowmere"\n---\n',
-    "Novel/Manuscript/01 Part One/01 Part One.md": '---\nid: "P1"\ntype: "folder"\ntitle: "Part One"\n---\nPart One begins here.\n',
-    "Novel/Manuscript/01 Part One/01 The House.md": doc("C1", "The House", "one two three four", 'status: "Revised"\nlabel: "Mara"\n'),
+    "Novel/Manuscript/01 Part One/01 Part One.md": note({ id: "P1", type: "folder", title: "Part One" }, "Part One begins here.\n"),
+    "Novel/Manuscript/01 Part One/01 The House.md": doc("C1", "The House", "one two three four", { status: "Revised", label: "Mara" }),
     "Novel/Manuscript/01 Part One/02 The Tin.md": doc("C2", "The Tin", "five six"),
     "Novel/Manuscript/01 Part One/03 Verse.md": doc("C3", "Verse", "seven"),
     "Novel/Manuscript/02 Part Two/01 Return.md": doc("C4", "Return", "eight nine ten"),
-    "Novel/People/Mara.md": '---\nid: "M"\ntype: "character"\ntitle: "Mara"\n---\nnot counted\n',
-    "Novel/Notes/Beta.md": doc("N2", "Beta", "b", "order: 2\n"),
-    "Novel/Notes/Alpha.md": doc("N1", "Alpha", "a", "order: 1\n"),
+    "Novel/People/Mara.md": note({ id: "M", type: "character", title: "Mara" }, "not counted\n"),
+    "Novel/Notes/Beta.md": scene("N2", "Beta", "b\n", { order: 2 }),
+    "Novel/Notes/Alpha.md": scene("N1", "Alpha", "a\n", { order: 1 }),
   });
 }
 

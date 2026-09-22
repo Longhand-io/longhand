@@ -391,11 +391,13 @@
 
 
 .lh-map-tool:hover,
+.lh-root button.lh-button:hover,
 .lh-map-style:hover {
   border-color: var(--lh-ink);
 }
 
-.lh-map-tool-active {
+.lh-map-tool-active,
+.lh-root button.lh-button.lh-active {
   background: var(--lh-ink);
   color: var(--lh-paper);
   border-color: var(--lh-ink);
@@ -512,7 +514,8 @@
   vertical-align: -3px;
 }
 
-.lh-map-tool {
+.lh-map-tool,
+.lh-root button.lh-button {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -688,7 +691,8 @@
   border-top: 1px solid var(--lh-rule);
 }
 
-.lh-root button.lh-nib-chip {
+.lh-root button.lh-nib-chip,
+.lh-root button.lh-chip {
   padding: 0.2rem 0.6rem;
   font: inherit;
   font-size: 0.78rem;
@@ -700,7 +704,8 @@
   cursor: pointer;
 }
 
-.lh-root button.lh-nib-chip:hover {
+.lh-root button.lh-nib-chip:hover,
+.lh-root button.lh-chip:hover {
   border-color: var(--lh-ink);
 }
 
@@ -1032,7 +1037,8 @@
   text-overflow: ellipsis;
 }
 
-.lh-tl-lab {
+.lh-tl-lab,
+.lh-dot {
   display: inline-block;
   width: 0.55rem;
   height: 0.55rem;
@@ -1414,15 +1420,6 @@
   white-space: nowrap;
 }
 
-.lh-binder-lab {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-right: 0.35rem;
-  border-radius: 50%;
-  background: var(--lh-graphite);
-  vertical-align: 0;
-}
 
 .lh-binder-dragging {
   opacity: 0.5;

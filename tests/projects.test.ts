@@ -6,7 +6,9 @@ import { test } from "node:test";
 import { createCore } from "../src/core/modules.js";
 import { MemoryHost } from "../src/host/memory.js";
 
-const doc = (id: string, extra = "") => `---\nid: "${id}"\ntype: "text"\n${extra}---\n`;
+import { note } from "./fixtures.js";
+
+const doc = (id: string, extra: { [k: string]: string | number } = {}) => note({ id, type: "text", ...extra });
 
 // The same shape the importer writes for the synthetic fixture, plus a second project.
 function fixtureVault(): MemoryHost {
@@ -17,14 +19,14 @@ function fixtureVault(): MemoryHost {
     "Fixture Novel/Manuscript/01 Part One/02 The Tin.md": doc("C2"),
     "Fixture Novel/Manuscript/01 Part One/03 Verse.md": doc("C3"),
     "Fixture Novel/Manuscript/01 Part One/10 Late.md": doc("C10"),
-    "Fixture Novel/Research/01 Gazette.md": doc("PDF1", 'type: "pdf"\n'),
+    "Fixture Novel/Research/01 Gazette.md": doc("PDF1", { type: "pdf" }),
     "Fixture Novel/Research/02 Map notes.md": doc("N1"),
     "Fixture Novel/_snapshots/C1/2020-01-20T04-27-36Z First Draft.md": doc("C1"),
     "Fixture Novel/.scriv2obsidian.json": "{}",
     "Other/_Project.md": '---\nlonghand: 1\n---\n',
-    "Other/Manuscript/Beta.md": doc("O2", "order: 2\n"),
-    "Other/Manuscript/Alpha.md": doc("O1", "order: 1\n"),
-    "Other/Manuscript/Gamma.md": doc("O3", "order: 3\n"),
+    "Other/Manuscript/Beta.md": doc("O2", { order: 2 }),
+    "Other/Manuscript/Alpha.md": doc("O1", { order: 1 }),
+    "Other/Manuscript/Gamma.md": doc("O3", { order: 3 }),
     "Loose note.md": doc("L"),
   });
 }

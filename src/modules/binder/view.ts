@@ -7,6 +7,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
+import { labelDot } from "../../core/dom.js";
 import { projectPicker } from "../../core/picker.js";
 import { formatCount } from "../../core/text.js";
 import { applyMove, buildTree, planMove, type Node } from "./tree.js";
@@ -83,12 +84,7 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
       w.textContent = formatCount(node.words);
       meta.appendChild(w);
     }
-    if (node.label) {
-      const dot = document.createElement("i");
-      dot.className = "lh-binder-lab";
-      dot.title = node.label;
-      name.prepend(dot);
-    }
+    if (node.label) name.prepend(labelDot("var(--lh-graphite)", node.label));
     line.append(twisty, name, meta);
     const open = () => {
       const target = node.kind === "doc" ? node.path : node.note?.path;

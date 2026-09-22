@@ -6,6 +6,7 @@
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
+import { chip } from "../../core/dom.js";
 import { projectPicker } from "../../core/picker.js";
 import { ask, perform, projectsToOpen, scopeOf, type Answer, type Cite, type Scope } from "./answers.js";
 import type { NibEvent, NibSession } from "./session.js";
@@ -187,10 +188,7 @@ export function mountNibView(core: Core, el: HTMLElement, session: NibSession, c
       const row = document.createElement("div");
       row.className = "lh-nib-actions";
       for (const action of a.actions) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "lh-nib-chip lh-nib-action";
-        b.textContent = action.label;
+        const b = chip(action.label, undefined, "lh-nib-action");
         b.addEventListener("click", async () => {
           b.disabled = true;
           let said: string;
@@ -241,14 +239,7 @@ export function mountNibView(core: Core, el: HTMLElement, session: NibSession, c
   const renderChips = async () => {
     chips.replaceChildren();
     const suggestions = await suggest(core, contextPath);
-    for (const s of suggestions) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "lh-nib-chip";
-      b.textContent = s;
-      b.addEventListener("click", () => void submit(s));
-      chips.appendChild(b);
-    }
+    for (const s of suggestions) chips.appendChild(chip(s, () => void submit(s)));
   };
 
   form.addEventListener("submit", (ev) => {
@@ -407,13 +398,8 @@ export function mountNibDock(core: Core, el: HTMLElement, session: NibSession, i
   openChips.className = "lh-nib-bubble-actions";
   const actions = document.createElement("div");
   actions.className = "lh-nib-bubble-actions";
-  const askBtn = document.createElement("button");
-  askBtn.type = "button";
-  askBtn.className = "lh-nib-chip";
-  const dismissBtn = document.createElement("button");
-  dismissBtn.type = "button";
-  dismissBtn.className = "lh-nib-chip";
-  dismissBtn.textContent = "Not now";
+  const askBtn = chip("");
+  const dismissBtn = chip("Not now");
   actions.append(askBtn, dismissBtn);
   const form = document.createElement("form");
   form.className = "lh-nib-form lh-nib-bubble-form";
@@ -475,12 +461,7 @@ export function mountNibDock(core: Core, el: HTMLElement, session: NibSession, i
     greeting = await greetingFor(core, scope, contextPath, "corner");
     if (scope.kind === "none") {
       for (const p of (await projectsToOpen(core)).slice(0, 6)) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "lh-nib-chip";
-        b.textContent = `Open ${p.title}`;
-        b.addEventListener("click", () => void core.host.openNote(p.notePath));
-        openChips.appendChild(b);
+        openChips.appendChild(chip(`Open ${p.title}`, () => void core.host.openNote(p.notePath)));
       }
     }
     let nudges: Nudge[] = [];

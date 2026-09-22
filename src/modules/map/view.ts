@@ -11,11 +11,11 @@
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import { SHAPE_COLORS, SHAPE_STYLES, type Pin, type Shape, type ShapeColor, type ShapeStyle } from "../../core/spec.js";
+import { pressDrag } from "../../core/dom.js";
 import { createPlaceCard, type PlaceCard } from "./card.js";
 import { COLOR_LABELS, ICONS, STYLE_LABELS, TOOLS, createDrawLayer, type Tool } from "./draw.js";
 import { clean as cleanShape, MapModel, type ResolvedMap } from "./model.js";
 
-const DRAG_THRESHOLD = 4; // px before a press becomes a drag
 const NUDGE = 0.005; // arrow-key step in fractions
 const HIDE_DELAY = 260; // ms of grace when the pointer leaves a pin or its card
 const CARD_GAP = 12; // px between a pin and its card
@@ -391,52 +391,34 @@ export function mountMapView(core: Core, el: HTMLElement, path: string): ViewHan
     pinEl.appendChild(tag);
     pinEl.title = target ? target : `${pin.to} (not found)`;
 
-    let startX = 0;
-    let startY = 0;
-    let dragging = false;
-    let pressed = false;
-
-    pinEl.addEventListener("pointerdown", (ev) => {
-      if (ev.button !== 0) return;
-      pressed = true;
-      dragging = false;
-      startX = ev.clientX;
-      startY = ev.clientY;
-      pinEl.setPointerCapture(ev.pointerId);
-      ev.preventDefault();
-    });
-    pinEl.addEventListener("pointermove", (ev) => {
-      if (!pressed) return;
-      if (!dragging && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD) return;
-      if (!dragging) hideCard();
-      dragging = true;
-      pinEl.classList.add("lh-map-pin-dragging");
-      const { x, y } = fractionAt(ev.clientX, ev.clientY);
-      pinEl.style.left = `${x * 100}%`;
-      pinEl.style.top = `${y * 100}%`;
-    });
-    const release = async (ev: PointerEvent) => {
-      if (!pressed) return;
-      pressed = false;
-      pinEl.releasePointerCapture(ev.pointerId);
-      pinEl.classList.remove("lh-map-pin-dragging");
-      if (dragging) {
+    pressDrag(pinEl, {
+      onDragStart: () => {
+        hideCard();
+        pinEl.classList.add("lh-map-pin-dragging");
+      },
+      onDrag: (ev) => {
+        const { x, y } = fractionAt(ev.clientX, ev.clientY);
+        pinEl.style.left = `${x * 100}%`;
+        pinEl.style.top = `${y * 100}%`;
+      },
+      onDrop: async (ev) => {
+        pinEl.classList.remove("lh-map-pin-dragging");
         const { x, y } = fractionAt(ev.clientX, ev.clientY);
         await write(() => model.movePin(index, x, y));
-      } else if (core.host.isMobile || ev.pointerType === "touch") {
-        // no hover on touch: a tap shows the card, whose name opens the note
-        if (openCard?.pinEl === pinEl) hideCard();
-        else hover();
-      } else {
-        await open(pin);
-      }
-    };
-    pinEl.addEventListener("pointerup", (ev) => void release(ev));
-    pinEl.addEventListener("pointercancel", () => {
-      pressed = false;
-      dragging = false;
-      pinEl.classList.remove("lh-map-pin-dragging");
-      void render();
+      },
+      onTap: async (ev) => {
+        if (core.host.isMobile || ev.pointerType === "touch") {
+          // no hover on touch: a tap shows the card, whose name opens the note
+          if (openCard?.pinEl === pinEl) hideCard();
+          else hover();
+        } else {
+          await open(pin);
+        }
+      },
+      onCancel: () => {
+        pinEl.classList.remove("lh-map-pin-dragging");
+        void render();
+      },
     });
     const hover = () => {
       const t = model.targetOf(pin);

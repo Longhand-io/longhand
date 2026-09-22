@@ -111,16 +111,16 @@ export function set(fm: Frontmatter, key: string, value: Value | undefined): voi
 
 // ---- reading ----
 
+/** A `key: value` line plus the indented lines under it, to a value. */
+function keyed(head: string, tail: string[]): Value {
+  const inline = (KEY_LINE.exec(head)?.[2] ?? "").trim();
+  if (inline !== "" && inline !== "|" && inline !== ">") return parseInline(inline);
+  const rest = trimTrailingBlank(tail);
+  return rest.length ? parseBlock(rest) : null;
+}
+
 function parseEntry(lines: string[]): Value {
-  const first = lines[0] ?? "";
-  const m = KEY_LINE.exec(first);
-  const inline = (m?.[2] ?? "").trim();
-  const rest = trimTrailingBlank(lines.slice(1));
-  if (inline !== "" && inline !== "|" && inline !== ">") {
-    return parseInline(inline);
-  }
-  if (rest.length === 0) return null;
-  return parseBlock(rest);
+  return keyed(lines[0] ?? "", lines.slice(1));
 }
 
 function trimTrailingBlank(lines: string[]): string[] {
@@ -148,18 +148,9 @@ function parseBlock(lines: string[]): Value {
   const obj: { [key: string]: Value } = {};
   for (const itemLines of items) {
     const head = (itemLines[0] ?? "").trimStart();
-    const km = KEY_LINE.exec(head);
-    if (!km) continue;
-    const key = km[1] ?? "";
-    const inline = (km[2] ?? "").trim();
-    const tail = trimTrailingBlank(itemLines.slice(1));
-    if (inline !== "") {
-      obj[key] = parseInline(inline);
-    } else if (tail.length > 0) {
-      obj[key] = parseBlock(tail);
-    } else {
-      obj[key] = null;
-    }
+    const key = KEY_LINE.exec(head)?.[1];
+    if (key === undefined) continue;
+    obj[key] = keyed(head, itemLines.slice(1));
   }
   return obj;
 }
