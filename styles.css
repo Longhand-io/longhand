@@ -1307,8 +1307,22 @@
   border-radius: 2px;
 }
 
+/* a pin below the first row leaves a tick on the axis; its stem is drawn only while it is
+   pointed at, so no stem runs through the tags above it */
 .lh-tl-pin[data-row]:not([data-row="0"])::before {
+  top: calc(-1.35rem - (var(--row, 0) * 2.3rem));
+  height: 0.4rem;
+}
+
+.lh-tl-pin[data-row]:not([data-row="0"]):hover::before,
+.lh-tl-pin[data-row]:not([data-row="0"]):focus-visible::before,
+.lh-tl-pin-dragging[data-row]:not([data-row="0"])::before {
   height: calc(1.3rem + (var(--row, 0) * 2.3rem));
+}
+
+.lh-tl-pin:hover,
+.lh-tl-pin:focus-visible {
+  z-index: 1;
 }
 
 .lh-tl-track {
