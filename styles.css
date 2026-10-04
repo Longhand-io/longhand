@@ -1309,20 +1309,70 @@
 
 /* a pin below the first row leaves a tick on the axis; its stem is drawn only while it is
    pointed at, so no stem runs through the tags above it */
-.lh-tl-pin[data-row]:not([data-row="0"])::before {
+.lh-tl-pin[data-row]:not([data-row="0"])::before,
+.lh-tl-fold[data-row]:not([data-row="0"])::before {
   top: calc(-1.35rem - (var(--row, 0) * 2.3rem));
   height: 0.4rem;
 }
 
 .lh-tl-pin[data-row]:not([data-row="0"]):hover::before,
 .lh-tl-pin[data-row]:not([data-row="0"]):focus-visible::before,
-.lh-tl-pin-dragging[data-row]:not([data-row="0"])::before {
+.lh-tl-pin-dragging[data-row]:not([data-row="0"])::before,
+.lh-tl-fold[data-row]:not([data-row="0"]):hover::before,
+.lh-tl-fold[data-row]:not([data-row="0"]):focus-visible::before {
   height: calc(1.3rem + (var(--row, 0) * 2.3rem));
 }
 
 .lh-tl-pin:hover,
-.lh-tl-pin:focus-visible {
+.lh-tl-pin:focus-visible,
+.lh-tl-fold:hover,
+.lh-tl-fold:focus-visible {
   z-index: 1;
+}
+
+.lh-tl-axis .lh-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.lh-tl-scroll:focus {
+  outline: none;
+}
+
+/* a crowd of pins folded into one chip for its month or year */
+.lh-tl-pin-folded {
+  display: none;
+}
+
+.lh-tl-fold {
+  position: absolute;
+  top: 1.9rem;
+  transform: translateX(-50%);
+  cursor: zoom-in;
+  outline: none;
+}
+
+.lh-tl-fold::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -1.35rem;
+  width: 1px;
+  height: 1.3rem;
+  background: var(--lh-graphite);
+}
+
+.lh-tl-fold .lh-tl-tag {
+  color: var(--lh-graphite);
+  background: var(--lh-paper-deep);
+  border-color: var(--lh-graphite);
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-tl-fold:hover .lh-tl-tag,
+.lh-tl-fold:focus-visible .lh-tl-tag {
+  background: var(--lh-ink);
+  color: var(--lh-paper);
 }
 
 .lh-tl-track {

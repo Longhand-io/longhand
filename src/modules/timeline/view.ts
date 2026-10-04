@@ -4,15 +4,21 @@
 // The timeline view. A ruler, one track per thread, pins as tags in the thread's colour,
 // events dashed, ranges as bars, a Written track of dots from `created`, and a tray of
 // undated scenes. Click a pin to open its note; drag it along the axis to change its date.
+// A crowd of pins folds into one chip per month or year; click the chip to zoom into it.
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import { button, chip, labelDot, pressDrag, setActive } from "../../core/dom.js";
 import { projectPicker } from "../../core/picker.js";
 import { formatStoryDate } from "../../core/storydate.js";
+import { foldPins } from "./fold.js";
 import { TimelineModel, type Item, type SceneRef, type Timeline } from "./model.js";
 
 type Axis = "story" | "manuscript";
+
+const MAX_ZOOM = 64;
+/** the deepest a thread stacks its pins before a crowd folds into chips */
+const MAX_ROWS = 3;
 
 export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: string): ViewHandle {
   let model = new TimelineModel(core, anchorPath);
@@ -52,21 +58,43 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
   const zoomOut = zoomButton("−", "Zoom out", () => setZoom(zoom / 1.6));
   const zoomFit = zoomButton("Fit", "The whole story in the window", () => setZoom(1));
   const zoomIn = zoomButton("+", "Zoom in", () => setZoom(zoom * 1.6));
-  zoomRow.append(zoomLabel, zoomOut, zoomFit, zoomIn);
+  // opening a fold remembers the view it was opened from, so Back folds it up again
+  const trail: { zoom: number; at: number }[] = [];
+  const back = () => {
+    const from = trail.pop();
+    if (!from) return;
+    setZoom(from.zoom);
+    scroll.scrollLeft = from.at * board.clientWidth;
+  };
+  const zoomBack = zoomButton("Back", "Fold up what you last opened (Esc)", back);
+  zoomBack.disabled = true;
+  zoomRow.append(zoomLabel, zoomOut, zoomFit, zoomIn, zoomBack);
   head.append(picker.el, hint, axisRow, zoomRow);
   let axis: Axis = "story";
   let axisChosen = false;
   const setZoom = (z: number) => {
     const before = scroll.scrollLeft / Math.max(1, board.clientWidth);
-    zoom = Math.min(64, Math.max(1, z));
+    zoom = Math.min(MAX_ZOOM, Math.max(1, z));
     board.style.width = zoom === 1 ? "" : `${zoom * 100}%`;
     setActive(zoomFit, zoom === 1);
+    if (zoom === 1) trail.length = 0;
+    zoomBack.disabled = trail.length === 0;
     layoutPins();
     scroll.scrollLeft = before * board.clientWidth;
+  };
+  /** Open a stretch of the axis: wide enough that it fills most of the window, and centred. */
+  const zoomTo = (from: number, to: number) => {
+    const span = fraction(to) - fraction(from);
+    trail.push({ zoom, at: scroll.scrollLeft / Math.max(1, board.clientWidth) });
+    setZoom(Math.max(zoom * 1.6, span > 0 ? 0.6 / span : MAX_ZOOM));
+    scroll.scrollLeft = ((fraction(from) + fraction(to)) / 2) * board.clientWidth - scroll.clientWidth / 2;
+    // the chip that was clicked is gone; keep focus in the view so Esc still reaches it
+    scroll.focus({ preventScroll: true });
   };
 
   const scroll = document.createElement("div");
   scroll.className = "lh-tl-scroll";
+  scroll.tabIndex = -1;
   const board = document.createElement("div");
   board.className = "lh-tl-board";
   scroll.appendChild(board);
@@ -74,8 +102,16 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
   const tray = document.createElement("div");
   tray.className = "lh-tl-tray";
   root.append(head, scroll, tray);
+  root.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape" || trail.length === 0) return;
+    ev.preventDefault();
+    back();
+  });
 
   let current: Timeline | null = null;
+  const pinItems = new Map<HTMLElement, Item>();
+  const pinWidths = new WeakMap<HTMLElement, number>();
+  const trackColors = new Map<HTMLElement, number | null>();
   let writing = false;
   let disposed = false;
 
@@ -92,12 +128,14 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     current = tl;
     await picker.refresh(tl.root);
     board.replaceChildren();
+    pinItems.clear();
+    trackColors.clear();
     const dated = tl.lanes.some((l) => l.items.length > 0);
     if (!axisChosen) axis = dated ? "story" : "manuscript";
     for (const [id, b] of axisButtons) setActive(b, id === axis);
     hint.textContent =
       axis === "story"
-        ? `Story date${tl.calendar.kind === "gregorian" ? "" : tl.calendar.kind === "custom" ? ", this project's own calendar" : ", counted"}. Click a pin to open its scene, drag it to change the date. Events are dashed.`
+        ? `Story date${tl.calendar.kind === "gregorian" ? "" : tl.calendar.kind === "custom" ? ", this project's own calendar" : ", counted"}. Click a pin to open its scene, drag it to change the date. Events are dashed. A crowd folds into its month or year; click it to open it, Back to fold it up.`
         : "Manuscript order. Every scene in binder order, a card in its thread. Click a card to open it; drag it to another thread to change its label.";
 
     if (axis === "manuscript") {
@@ -140,6 +178,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
       const track = document.createElement("div");
       track.className = "lh-tl-track";
       track.appendChild(labelled("span", "lh-tl-lane-name", lane.name, lane.color));
+      trackColors.set(track, lane.color);
       for (const item of lane.items) track.appendChild(pinFor(item, lane.color));
       board.appendChild(track);
     }
@@ -291,35 +330,97 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     return card;
   };
 
-  /** Pins that would overlap in a track go to the next row down; the track grows to fit. */
+  /**
+   * Pins that would overlap in a track go to the next row down, three rows at most; a crowd
+   * deeper than that folds into one chip per month, then per year. The track grows to fit.
+   */
   const layoutPins = () => {
+    if (!current) return;
+    const calendar = current.calendar;
+    const periodLabel = (key: string) => {
+      const d = calendar.parse(key);
+      return d ? calendar.label(d) : key;
+    };
+    const foldText = (key: string, count: number) => `${periodLabel(key)} · ${count}`;
     // read every measurement first, then write, so the browser lays out once, not once per pin
     const tracks = [...board.querySelectorAll<HTMLElement>(".lh-tl-track:not(.lh-tl-track-written)")].map((track) => {
       const rect = track.getBoundingClientRect();
       const pins = [...track.querySelectorAll<HTMLElement>(".lh-tl-pin")]
         .map((pin) => {
-          const tag = pin.querySelector<HTMLElement>(".lh-tl-tag");
-          return { pin, left: parseFloat(pin.style.left), width: tag ? tag.getBoundingClientRect().width : 80 };
+          // a folded pin is not drawn and has no width to read, so each is measured once
+          let width = pinWidths.get(pin);
+          if (width === undefined) {
+            const tag = pin.querySelector<HTMLElement>(".lh-tl-tag");
+            width = tag ? tag.getBoundingClientRect().width : 80;
+            if (width > 0) pinWidths.set(pin, width);
+            else width = 80;
+          }
+          return { pin, left: parseFloat(pin.style.left), width, item: pinItems.get(pin) };
         })
         .sort((a, b) => a.left - b.left);
       return { track, rect, pins };
     });
     for (const { track, rect, pins } of tracks) {
-      const rowEnds: number[] = [];
-      for (const { pin, left, width } of pins) {
-        const start = rect.left + (left / 100) * rect.width - width / 2;
-        let row = rowEnds.findIndex((end) => end + 8 <= start);
-        if (row < 0) {
-          row = rowEnds.length;
-          rowEnds.push(0);
+      for (const old of track.querySelectorAll(".lh-tl-fold")) old.remove();
+      const units = foldPins(
+        pins.map((p) => ({ centre: (p.left / 100) * rect.width, width: p.width, days: p.item?.start.days ?? 0 })),
+        {
+          maxRows: MAX_ROWS,
+          gap: 8,
+          // at full zoom there is nothing left to open, so every pin shows
+          periods: zoom >= MAX_ZOOM ? [] : [(days) => calendar.format(days, "month"), (days) => calendar.format(days, "year")],
+          chipWidth: (key, count) => foldText(key, count).length * 8 + 28,
+        },
+      );
+      let rows = 1;
+      for (const unit of units) {
+        rows = Math.max(rows, unit.row + 1);
+        const top = `${1.9 + unit.row * 2.3}rem`;
+        if (unit.period === null) {
+          const pin = pins[unit.members[0]!]!.pin;
+          pin.classList.remove("lh-tl-pin-folded");
+          pin.style.top = top;
+          pin.style.setProperty("--row", String(unit.row));
+          pin.dataset["row"] = String(unit.row);
+          continue;
         }
-        rowEnds[row] = start + width;
-        pin.style.top = `${1.9 + row * 2.3}rem`;
-        pin.style.setProperty("--row", String(row));
-        pin.dataset["row"] = String(row);
+        const items: Item[] = [];
+        for (const m of unit.members) {
+          const p = pins[m]!;
+          p.pin.classList.add("lh-tl-pin-folded");
+          if (p.item) items.push(p.item);
+        }
+        const fold = foldFor(foldText(unit.period, unit.members.length), items, trackColors.get(track) ?? null);
+        fold.style.left = `${rect.width > 0 ? (unit.centre / rect.width) * 100 : 0}%`;
+        fold.style.top = top;
+        fold.style.setProperty("--row", String(unit.row));
+        fold.dataset["row"] = String(unit.row);
+        track.appendChild(fold);
       }
-      track.style.height = `${2.6 + Math.max(1, rowEnds.length) * 2.3}rem`;
+      track.style.height = `${2.6 + rows * 2.3}rem`;
     }
+  };
+
+  /** A crowd of pins as one chip: its period and how many it holds. Click to zoom into it. */
+  const foldFor = (text: string, items: Item[], color: number | null): HTMLElement => {
+    const fold = document.createElement("div");
+    fold.className = "lh-tl-fold";
+    fold.tabIndex = 0;
+    fold.setAttribute("role", "button");
+    fold.appendChild(labelled("span", "lh-tl-tag", text, color));
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (!first || !last) return fold;
+    fold.title = `${items.length} scenes, ${model.labelFor(first.start)} to ${model.labelFor(last.start)}. Click to zoom in.`;
+    const open = () => zoomTo(first.start.days, last.start.days);
+    fold.addEventListener("click", open);
+    fold.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        open();
+      }
+    });
+    return fold;
   };
   let lastWidth = 0;
   const resize = new ResizeObserver((entries) => {
@@ -344,6 +445,7 @@ export function mountTimelineView(core: Core, el: HTMLElement, anchorPath: strin
     }
     const tag = labelled("span", "lh-tl-tag", item.title, color);
     pin.appendChild(tag);
+    pinItems.set(pin, item);
     const when = model.labelFor(item.start) + (item.end ? ` to ${model.labelFor(item.end)}` : "");
     pin.title = item.synopsis ? `${when}. ${item.synopsis}` : when;
 
