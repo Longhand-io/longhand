@@ -149,6 +149,14 @@ phases:
           - { id: L4.2-d1, done: true, desc: "left-sidebar tree in binder order; folders as chapters with summed words; status pill and label dot per scene; active scene marked; click opens; drag among siblings renumbers files (two-step renames through the host so links follow) or writes order fields; follows the active project", note: "2026-09-18: src/modules/binder/tree.ts and view.ts; tests/binder-tree.test.ts covers the tree, numbered and unnumbered moves, and folder moves" }
         acceptance:
           - { id: L4.2-a1, met: false, check: "in an imported project, drag chapter three above chapter two; the files are renumbered, wikilinks to them still resolve, and the tree and the timeline agree", method: manual }
+      - id: L4.3
+        title: Inspector
+        status: in_progress
+        deliverables:
+          - { id: L4.3-d1, done: true, desc: "right-sidebar view that follows the active note: title, kind, status, label, words without the notes, synopsis, and the document notes read from the Notes callout; reads only", note: "2026-10-05: src/core/notes.ts, src/modules/inspector; tests/inspector.test.ts" }
+          - { id: L4.3-d2, done: false, desc: "edit synopsis, status, label, and notes from the pane, written through the spec so the editor and the pane never overwrite each other" }
+        acceptance:
+          - { id: L4.3-a1, met: false, check: "in an imported project, open a scene that has Scrivener notes; the inspector shows its synopsis and notes beside the text, and follows when another scene opens", method: manual }
   - id: L5
     title: Corkboard, threads, story-date axis
     program: manuscript

@@ -1485,6 +1485,70 @@
 }
 
 
+.lh-inspector {
+  height: 100%;
+  overflow: auto;
+  background: var(--lh-paper);
+  font-size: 0.86rem;
+  padding-bottom: 1rem;
+}
+
+.lh-inspector-head {
+  padding: 0.6rem 0.8rem 0.5rem;
+  border-bottom: 1px solid var(--lh-rule);
+}
+
+.lh-inspector-title {
+  font-family: var(--lh-font-body);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.lh-inspector-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.lh-inspector-fact {
+  padding: 0 0.4rem;
+  border: 1px solid var(--lh-rule);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  color: var(--lh-graphite);
+  white-space: nowrap;
+}
+
+.lh-inspector-section {
+  padding: 0.7rem 0.8rem 0;
+}
+
+.lh-inspector-heading {
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lh-graphite);
+}
+
+.lh-inspector-text {
+  margin: 0 0 0.6rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.lh-inspector-none,
+.lh-inspector-empty {
+  margin: 0;
+  color: var(--lh-graphite);
+}
+
+.lh-inspector-empty {
+  padding: 0.8rem;
+}
+
 .lh-binder-dragging {
   opacity: 0.5;
 }
