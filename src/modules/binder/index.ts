@@ -142,7 +142,8 @@ export async function placeFor(core: Core, kind: NewKindId): Promise<string> {
   const under = (name: string) => (root === "" ? name : `${root}/${name}`);
 
   if (kind === "scene" || kind === "folder") {
-    if (active && project) {
+    // the shown project can be one picked by hand while a note from another is open
+    if (active && project && (root === "" || active.startsWith(root + "/"))) {
       const dir = dirOf(active);
       const rel = root === "" ? dir : dir.slice(root.length + 1);
       if (rel !== "" && !rel.startsWith("_") && !rel.startsWith(".")) return dir;

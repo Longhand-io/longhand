@@ -49,6 +49,21 @@ test("placement: scenes next to the active scene, else the manuscript folder wha
   assert.equal(await placeFor(core, "scene"), "Novel/Draft");
 });
 
+test("placement: a project picked by hand gets the new scene, not the folder of a note open in another", async () => {
+  const host = new MemoryHost({
+    "Novel/_Project.md": "---\nlonghand: 1\n---\n",
+    "Novel/Draft/01 Part One/02 The Tin.md": doc("C2", "text"),
+    "Other/_Project.md": "---\nlonghand: 1\n---\n",
+    "Other/Manuscript/01 Alpha.md": doc("O1", "text"),
+  });
+  const core = createCore(host);
+  host.setActive("Novel/Draft/01 Part One/02 The Tin.md");
+  // opening a note forgets an earlier pick; let that finish before picking
+  await new Promise((r) => setTimeout(r, 0));
+  core.projects.choose("Other");
+  assert.equal(await placeFor(core, "scene"), "Other/Manuscript");
+});
+
 test("placement: characters and settings go where the project already keeps them, else Research; maps to Maps", async () => {
   const host = vault();
   const core = createCore(host);
