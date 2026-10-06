@@ -77,3 +77,77 @@ test("warns once when a project note declares a newer spec", async () => {
   assert.equal(host.notices.length, 1);
   assert.ok(host.notices[0]?.includes("spec 2"));
 });
+
+const PROJECT = '---\nlonghand: 1\ntitle: "Novel"\n---\n';
+
+/** A host that runs `during` once, in the middle of its next read: a change that lands while the registry is reading. */
+class InterruptingHost extends MemoryHost {
+  during: (() => Promise<void>) | null = null;
+
+  override async readFile(path: string): Promise<string> {
+    const text = await super.readFile(path);
+    const run = this.during;
+    this.during = null;
+    if (run) await run();
+    return text;
+  }
+}
+
+test("a vault that loads file by file, as a host does at startup, ends with every document indexed", async () => {
+  const host = new MemoryHost();
+  const core = createCore(host);
+  // the project note arriving makes the registry look for the current project, which starts
+  // the index while the rest of the vault is still on its way
+  await host.writeFile("Novel/_Project.md", PROJECT);
+  await host.writeFile("Novel/Draft/01 One.md", doc("A"));
+  await host.writeFile("Novel/Draft/02 Two.md", doc("B"));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(
+    (await core.projects.documents("Novel")).map((d) => d.id),
+    ["A", "B"],
+  );
+});
+
+test("a note that appears while the index is being built is not lost", async () => {
+  const host = new InterruptingHost({ "Novel/_Project.md": PROJECT, "Novel/Draft/01 One.md": doc("A") });
+  host.during = () => host.writeFile("Novel/Draft/02 Two.md", doc("B"));
+  const core = createCore(host);
+  await core.projects.documents("Novel");
+  assert.deepEqual(
+    (await core.projects.documents("Novel")).map((d) => d.id),
+    ["A", "B"],
+  );
+});
+
+test("a note renamed while the index is being built is indexed under its new path only", async () => {
+  const host = new InterruptingHost({ "Novel/_Project.md": PROJECT, "Novel/Draft/01 One.md": doc("A"), "Novel/Draft/02 Two.md": doc("B") });
+  host.during = () => host.renameFile("Novel/Draft/01 One.md", "Novel/Draft/03 One.md");
+  const core = createCore(host);
+  await core.projects.documents("Novel");
+  assert.deepEqual(
+    (await core.projects.documents("Novel")).map((d) => d.path),
+    ["Novel/Draft/02 Two.md", "Novel/Draft/03 One.md"],
+  );
+});
+
+test("a folder moved while the index is being built leaves no document under its old path", async () => {
+  const host = new InterruptingHost({ "Novel/_Project.md": PROJECT, "Novel/Draft/01 One.md": doc("A"), "Novel/Draft/02 Two.md": doc("B") });
+  host.during = () => host.renameFile("Novel/Draft", "Novel/Manuscript");
+  const core = createCore(host);
+  await core.projects.documents("Novel");
+  assert.deepEqual(
+    (await core.projects.documents("Novel")).map((d) => d.path),
+    ["Novel/Manuscript/01 One.md", "Novel/Manuscript/02 Two.md"],
+  );
+});
+
+test("a note changed again while changes are being read keeps its newest text", async () => {
+  const one = "Novel/Draft/01 One.md";
+  const host = new InterruptingHost({ "Novel/_Project.md": PROJECT, [one]: doc("A", { title: "first" }), "Novel/Draft/02 Two.md": doc("B") });
+  const core = createCore(host);
+  await core.projects.documents("Novel");
+  await host.writeFile(one, doc("A", { title: "second" }));
+  host.during = () => host.writeFile(one, doc("A", { title: "third" }));
+  await core.projects.byId("A");
+  assert.equal((await core.projects.byId("A"))?.title, "third");
+});

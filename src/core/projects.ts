@@ -26,6 +26,12 @@ export class Projects {
   private index: Map<string, Document> | null = null;
   /** paths whose index entry is stale and is re-read on the next use */
   private stale = new Set<string>();
+  /** index reads run one at a time, so every caller sees the changes recorded before its turn */
+  private reading: Promise<unknown> = Promise.resolve();
+  /** the first build is reading files; changes that land now are kept in `stale` for when it ends */
+  private building = false;
+  /** a folder moved while the build was reading, so the paths it listed are wrong */
+  private moved = false;
   private rootsCache: Project[] | null = null;
   private docsCache = new Map<string, Document[]>();
   /** per-path values computed from a document, dropped when that path changes */
@@ -102,6 +108,7 @@ export class Projects {
       this.index = null;
       this.stale.clear();
       this.derivedCache.clear();
+      this.moved = true;
     } else if (isNote(c.path) || isNote(c.oldPath)) {
       for (const m of this.derivedCache.values()) {
         m.delete(c.path);
@@ -111,6 +118,10 @@ export class Projects {
         if (c.oldPath) this.index.delete(c.oldPath);
         if (c.kind === "delete") this.index.delete(c.path);
         else this.stale.add(c.path);
+      } else if (this.building) {
+        // the build may have read these already, or listed the files before this one existed
+        if (isNote(c.path)) this.stale.add(c.path);
+        if (c.oldPath && isNote(c.oldPath)) this.stale.add(c.oldPath);
       }
     } else return;
     this.rootsCache = null;
@@ -195,30 +206,43 @@ export class Projects {
     return (await this.ensureIndex()).get(path) ?? null;
   }
 
-  private async ensureIndex(): Promise<Map<string, Document>> {
-    if (this.index) {
-      for (const path of this.stale) {
+  private ensureIndex(): Promise<Map<string, Document>> {
+    const run = this.reading.then(() => this.refresh());
+    this.reading = run.catch(() => undefined);
+    return run;
+  }
+
+  /** Build the index on first use, then bring it up to date with the changes since. */
+  private async refresh(): Promise<Map<string, Document>> {
+    let index = this.index;
+    while (!index) {
+      this.building = true;
+      this.moved = false;
+      const built = new Map<string, Document>();
+      const files = this.host.listFiles();
+      for (const path of files) {
+        if (!path.toLowerCase().endsWith(".md")) continue;
         try {
-          this.index.set(path, this.spec.fromText(path, await this.host.readFile(path)));
+          built.set(path, this.spec.fromText(path, await this.host.readFile(path)));
         } catch {
-          this.index.delete(path);
+          // a file that vanished between listing and reading; skip it
         }
       }
-      this.stale.clear();
-      return this.index;
+      this.building = false;
+      if (this.moved) continue;
+      // a host that has not finished loading reports no files; do not remember that
+      if (files.length === 0) return built;
+      this.index = index = built;
     }
-    const index = new Map<string, Document>();
-    const files = this.host.listFiles();
-    for (const path of files) {
-      if (!path.toLowerCase().endsWith(".md")) continue;
+    // each path leaves the set before its read, so a change during the read queues it again
+    for (const path of this.stale) {
+      this.stale.delete(path);
       try {
         index.set(path, this.spec.fromText(path, await this.host.readFile(path)));
       } catch {
-        // a file that vanished between listing and reading; skip it
+        index.delete(path);
       }
     }
-    // a host that has not finished loading reports no files; do not remember that
-    if (files.length > 0) this.index = index;
     return index;
   }
 }
