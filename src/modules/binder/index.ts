@@ -42,15 +42,6 @@ export const binderModule: Module = {
   register(core: Core) {
     const host = core.host;
 
-    host.registerView(BINDER_VIEW, {
-      icon: "list-tree",
-      placement: "left",
-      title: () => "Binder",
-      mount: (el) => mountBinderView(core, el),
-    });
-    host.registerCommand({ id: "binder-open", name: "Open binder", run: () => host.openView(BINDER_VIEW, { path: "" }) });
-    host.registerRibbon("list-tree", "Open binder", () => host.openView(BINDER_VIEW, { path: "" }));
-
     const createProject = async (atFolder?: string) => {
       const title = await host.prompt("Project title", "");
       if (!title) return;
@@ -101,31 +92,33 @@ export const binderModule: Module = {
         KINDS.map((k) => ({ label: k.label, detail: k.description, value: k })),
       );
 
-    host.registerCommand({
-      id: "new",
-      name: "New…",
-      run: async () => {
-        const kind = await pickKind();
-        if (kind) await create(kind);
-      },
+    /** New…: ask what kind, then create it in `folder`, or by the placement rules when none is given. */
+    const newAt = async (folder?: string) => {
+      const kind = await pickKind();
+      if (kind) await create(kind, folder);
+    };
+
+    host.registerView(BINDER_VIEW, {
+      icon: "list-tree",
+      placement: "left",
+      title: () => "Binder",
+      mount: (el) => mountBinderView(core, el, { newAt }),
     });
+    host.registerCommand({ id: "binder-open", name: "Open binder", run: () => host.openView(BINDER_VIEW, { path: "" }) });
+    host.registerRibbon("list-tree", "Open binder", () => host.openView(BINDER_VIEW, { path: "" }));
+
+    host.registerCommand({ id: "new", name: "New…", run: () => newAt() });
     for (const k of KINDS) {
       if (k.id === "map") continue; // the map module owns New map
       host.registerCommand({ id: `new-${k.id}`, name: `New ${k.label.toLowerCase()}`, run: () => create(k) });
     }
-    host.registerRibbon("file-plus", "New scene, folder, character, setting, event, map, or project", async () => {
-      const kind = await pickKind();
-      if (kind) await create(kind);
-    });
+    host.registerRibbon("file-plus", "New scene, folder, character, setting, event, map, or project", () => newAt());
     host.registerFileMenu({
       label: "New here…",
       icon: "file-plus",
       on: "folder",
       check: () => true,
-      run: async (folder) => {
-        const kind = await pickKind();
-        if (kind) await create(kind, folder === "/" ? "" : folder);
-      },
+      run: (folder) => newAt(folder === "/" ? "" : folder),
     });
   },
 };

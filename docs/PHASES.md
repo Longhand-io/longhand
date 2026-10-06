@@ -147,6 +147,7 @@ phases:
         status: in_progress
         deliverables:
           - { id: L4.2-d1, done: true, desc: "left-sidebar tree in binder order; folders as chapters with summed words; status pill and label dot per scene; active scene marked; click opens; drag among siblings renumbers files (two-step renames through the host so links follow) or writes order fields; follows the active project", note: "2026-09-18: src/modules/binder/tree.ts and view.ts; tests/binder-tree.test.ts covers the tree, numbered and unnumbered moves, and folder moves" }
+          - { id: L4.2-d2, done: true, desc: "New from the binder itself: a + in the header that follows the placement rules, and a + on every row for in this folder or beside this note", note: "2026-10-06: src/modules/binder/view.ts and index.ts; tests/binder-view.test.ts mounts the view on tests/dom.ts, a fake DOM" }
         acceptance:
           - { id: L4.2-a1, met: false, check: "in an imported project, drag chapter three above chapter two; the files are renumbered, wikilinks to them still resolve, and the tree and the timeline agree", method: manual }
       - id: L4.3

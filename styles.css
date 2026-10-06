@@ -1549,6 +1549,36 @@
   padding: 0.8rem;
 }
 
+.lh-root button.lh-binder-add {
+  flex: none;
+  height: auto;
+  padding: 0 0.3rem;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  box-shadow: none;
+  color: var(--lh-graphite);
+  font-size: 1rem;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.lh-root button.lh-binder-add:hover,
+.lh-root button.lh-binder-add:focus-visible {
+  color: var(--lh-ink);
+  background: var(--lh-paper-deep);
+}
+
+/* a row's + waits until the row is pointed at or focused; the header's always shows */
+.lh-binder-row .lh-binder-add {
+  opacity: 0;
+}
+
+.lh-binder-row:hover .lh-binder-add,
+.lh-binder-row:focus-within .lh-binder-add {
+  opacity: 1;
+}
+
 .lh-binder-dragging {
   opacity: 0.5;
 }

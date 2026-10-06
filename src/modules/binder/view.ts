@@ -4,15 +4,24 @@
 // The binder view: the project as an ordered tree in the left sidebar. Folders are chapters
 // and carry the sum of their scenes' words; the active scene is marked; click opens; drag a
 // sibling above or below another to reorder, which renumbers the files or writes `order`.
+// New is here too: the + in the header, and a + on each row for "in this folder" or "beside
+// this note".
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
 import { labelDot } from "../../core/dom.js";
 import { projectPicker } from "../../core/picker.js";
+import { dirOf } from "../../core/naming.js";
 import { formatCount } from "../../core/text.js";
 import { applyMove, buildTree, planMove, type Node } from "./tree.js";
 
-export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
+/** What the view asks the module to do; the module owns how a note is made. */
+export interface BinderActions {
+  /** New…: ask what kind, then create it in `folder`, or by the placement rules when none is given */
+  newAt(folder?: string): Promise<void>;
+}
+
+export function mountBinderView(core: Core, el: HTMLElement, actions: BinderActions): ViewHandle {
   const root = document.createElement("div");
   root.className = "lh-root lh-binder";
   el.appendChild(root);
@@ -22,7 +31,21 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
   const picker = projectPicker(core);
   const total = document.createElement("div");
   total.className = "lh-binder-total";
-  head.append(picker.el, total);
+  const addButton = (title: string, folder?: string): HTMLButtonElement => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "lh-binder-add";
+    b.textContent = "+";
+    b.title = title;
+    b.setAttribute("aria-label", title);
+    b.addEventListener("click", (ev) => {
+      // the row under the button must not open as well
+      ev.stopPropagation();
+      void actions.newAt(folder);
+    });
+    return b;
+  };
+  head.append(picker.el, total, addButton("New… in this project"));
   const list = document.createElement("div");
   list.className = "lh-binder-tree";
   root.append(head, list);
@@ -85,7 +108,8 @@ export function mountBinderView(core: Core, el: HTMLElement): ViewHandle {
       meta.appendChild(w);
     }
     if (node.label) name.prepend(labelDot("var(--lh-graphite)", node.label));
-    line.append(twisty, name, meta);
+    const add = node.kind === "folder" ? addButton(`New… in ${node.name}`, node.path) : addButton(`New… beside ${node.name}`, dirOf(node.path));
+    line.append(twisty, name, meta, add);
     const open = () => {
       const target = node.kind === "doc" ? node.path : node.note?.path;
       if (target) void core.host.openNote(target);
