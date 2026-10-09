@@ -37,7 +37,6 @@ export function mountBinderView(core: Core, el: HTMLElement, actions: BinderActi
     b.className = "lh-binder-add";
     b.textContent = "+";
     b.title = title;
-    b.setAttribute("aria-label", title);
     b.addEventListener("click", (ev) => {
       // the row under the button must not open as well
       ev.stopPropagation();
