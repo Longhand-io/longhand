@@ -48,6 +48,7 @@ test("L4.3-d1: the inspector reads title, kind, status, label, synopsis, notes, 
     words: 10,
     synopsis: "Mara finds the tin.",
     notes: "**Focus:** the tin, not the letter.\n\nAsk whether Tom *knows*.",
+    snapshots: [],
   });
   const bare = await inspect(core, "Novel/Draft/03 Untitled-.md");
   assert.equal(bare?.title, "Untitled-");

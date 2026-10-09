@@ -12,9 +12,10 @@ import { binderModule } from "./modules/binder/index.js";
 import { inspectorModule } from "./modules/inspector/index.js";
 import { mapModule } from "./modules/map/index.js";
 import { nibModule } from "./modules/nib/index.js";
+import { snapshotsModule } from "./modules/snapshots/index.js";
 import { timelineModule } from "./modules/timeline/index.js";
 
-const MODULES = [binderModule, inspectorModule, mapModule, timelineModule, nibModule];
+const MODULES = [binderModule, inspectorModule, snapshotsModule, mapModule, timelineModule, nibModule];
 
 export default class LonghandPlugin extends Plugin {
   private moduleSettings: ModuleSettings = { enabled: {} };

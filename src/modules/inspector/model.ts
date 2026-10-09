@@ -8,6 +8,7 @@ import * as fm from "../../core/frontmatter.js";
 import type { Core } from "../../core/modules.js";
 import { splitPrefix } from "../../core/naming.js";
 import { splitNotes } from "../../core/notes.js";
+import { listSnapshots, type Snapshot } from "../../core/snapshots.js";
 import { isProse, typeLabel } from "../../core/spec.js";
 import { words } from "../../core/text.js";
 
@@ -22,6 +23,8 @@ export interface Inspection {
   words: number | null;
   synopsis: string | null;
   notes: string | null;
+  /** this note's snapshots, newest first; empty outside a project or without an id */
+  snapshots: Snapshot[];
 }
 
 /** Everything the inspector shows for the note at `path`; null when it is not a note the vault has. */
@@ -30,6 +33,7 @@ export async function inspect(core: Core, path: string): Promise<Inspection | nu
   if (!doc) return null;
   const base = path.slice(path.lastIndexOf("/") + 1).replace(/\.md$/i, "");
   const parts = splitNotes(doc.fields.body);
+  const project = doc.id ? await core.projects.projectOf(path) : null;
   return {
     path,
     title: doc.title ?? splitPrefix(base).rest,
@@ -39,6 +43,7 @@ export async function inspect(core: Core, path: string): Promise<Inspection | nu
     words: isProse(doc) ? words(parts.text) : null,
     synopsis: str(fm.get(doc.fields, "synopsis")),
     notes: parts.notes || null,
+    snapshots: project && doc.id ? listSnapshots(core.host.listFiles(), project.root, doc.id) : [],
   };
 }
 

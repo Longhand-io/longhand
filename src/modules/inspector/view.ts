@@ -2,8 +2,8 @@
 // Copyright 2026 0xSpectra LLC and the Longhand Authors.
 
 // The inspector view: the note you are in, seen from the side. Its title, kind, status,
-// label, and words, then the synopsis and the document notes, in the right sidebar while the
-// text stays in the editor. It reads; the note is changed in the editor.
+// label, and words, then the synopsis, the document notes, and the note's snapshots, in the
+// right sidebar while the text stays in the editor. It reads; the note is changed in the editor.
 
 import type { Core } from "../../core/modules.js";
 import type { ViewHandle } from "../../host/host.js";
@@ -37,6 +37,43 @@ export function mountInspectorView(core: Core, el: HTMLElement): ViewHandle {
     }
     root.append(head(shown), section("Synopsis", shown.synopsis, "No synopsis yet. It is the synopsis field at the top of the note."));
     root.append(section("Notes", shown.notes, "No notes yet. They live in a callout titled Notes at the end of the note."));
+    root.append(snapshots(shown));
+  };
+
+  const snapshots = (shown: Inspection): HTMLElement => {
+    const box = document.createElement("div");
+    box.className = "lh-inspector-section";
+    const h = document.createElement("div");
+    h.className = "lh-inspector-heading";
+    h.textContent = "Snapshots";
+    box.appendChild(h);
+    if (shown.snapshots.length === 0) {
+      box.appendChild(para("lh-inspector-none", "None yet. Take snapshot, from the command palette or the note's menu, keeps a copy under a title."));
+      return box;
+    }
+    const list = document.createElement("ul");
+    list.className = "lh-inspector-snapshots";
+    for (const s of shown.snapshots) {
+      const li = document.createElement("li");
+      li.className = "lh-inspector-snapshot";
+      li.tabIndex = 0;
+      li.setAttribute("role", "link");
+      const when = document.createElement("span");
+      when.className = "lh-inspector-when";
+      when.textContent = s.when.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+      const title = document.createElement("span");
+      title.className = "lh-inspector-snapshot-title";
+      title.textContent = s.title;
+      li.append(when, title);
+      const open = () => void core.host.openNote(s.path);
+      li.addEventListener("click", open);
+      li.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") open();
+      });
+      list.appendChild(li);
+    }
+    box.appendChild(list);
+    return box;
   };
 
   const head = (shown: Inspection): HTMLElement => {
@@ -93,7 +130,8 @@ export function mountInspectorView(core: Core, el: HTMLElement): ViewHandle {
   });
   const unsubFiles = core.host.onFileChanged((change) => {
     if (change.kind === "rename" && change.oldPath === path) path = change.path;
-    if (change.path === path) void render();
+    // a new snapshot lands in _snapshots, not at this path; redraw for that too
+    if (change.path === path || change.path.includes("/_snapshots/") || change.path.startsWith("_snapshots/")) void render();
   });
   void render();
 

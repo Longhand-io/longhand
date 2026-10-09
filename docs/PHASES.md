@@ -96,14 +96,14 @@ phases:
   - id: L3
     title: Snapshots module
     program: manuscript
-    status: planned
+    status: in_progress
     depends_on: [L2]
     subphases:
       - id: L3.1
         title: Take and list
-        status: planned
+        status: in_progress
         deliverables:
-          - { id: L3.1-d1, done: false, desc: "command and sidebar tab; prompt for a title; list only this document's snapshots newest first with date and word delta; folder snapshot" }
+          - { id: L3.1-d1, done: false, desc: "command and sidebar tab; prompt for a title; list only this document's snapshots newest first with date and word delta; folder snapshot", note: "2026-10-08: Take snapshot command and file-menu entry with a title prompt, files store per the spec, and the list in the inspector newest first with date; src/core/snapshots.ts, src/modules/snapshots; tests/snapshots.test.ts. Still open: word delta, folder snapshot, the git store" }
         acceptance:
           - { id: L3.1-a1, met: false, check: "auto-commits from Obsidian Git do not appear in the list", method: manual }
       - id: L3.2
