@@ -19,6 +19,7 @@ import {
 import type { App } from "obsidian";
 import { get as getField, parse as parseFrontmatter } from "../../core/frontmatter.js";
 import { IMAGE_EXTENSIONS, type Choice, type Command, type FileChange, type FileMenuItem, type Host, type Overlay, type PickKind, type ViewFactory, type ViewHandle, type ViewState } from "../host.js";
+import { oneAnswer, type Answer } from "../answer.js";
 
 export class ObsidianHost implements Host {
   readonly isMobile: boolean = Platform.isMobile;
@@ -364,15 +365,16 @@ class HostView extends ItemView {
 }
 
 class FilePicker extends FuzzySuggestModal<TFile> {
-  private settled = false;
+  private readonly answer: Answer<string>;
 
   constructor(
     app: App,
     private readonly files: TFile[],
     placeholder: string,
-    private readonly resolve: (path: string | null) => void,
+    resolve: (path: string | null) => void,
   ) {
     super(app);
+    this.answer = oneAnswer(resolve);
     this.setPlaceholder(placeholder);
   }
 
@@ -385,29 +387,27 @@ class FilePicker extends FuzzySuggestModal<TFile> {
   }
 
   onChooseItem(item: TFile): void {
-    this.settled = true;
-    this.resolve(item.path);
+    this.answer.choose(item.path);
   }
 
+  // a suggest modal closes before it reports the choice, so closing is not yet a dismissal
   override onClose(): void {
     super.onClose();
-    if (!this.settled) {
-      this.settled = true;
-      this.resolve(null);
-    }
+    this.answer.dismiss();
   }
 }
 
 class ChoicePicker<T> extends FuzzySuggestModal<Choice<T>> {
-  private settled = false;
+  private readonly answer: Answer<T>;
 
   constructor(
     app: App,
     title: string,
     private readonly options: Choice<T>[],
-    private readonly resolve: (value: T | null) => void,
+    resolve: (value: T | null) => void,
   ) {
     super(app);
+    this.answer = oneAnswer(resolve);
     this.setPlaceholder(title);
   }
 
@@ -425,16 +425,12 @@ class ChoicePicker<T> extends FuzzySuggestModal<Choice<T>> {
   }
 
   onChooseItem(item: Choice<T>): void {
-    this.settled = true;
-    this.resolve(item.value);
+    this.answer.choose(item.value);
   }
 
   override onClose(): void {
     super.onClose();
-    if (!this.settled) {
-      this.settled = true;
-      this.resolve(null);
-    }
+    this.answer.dismiss();
   }
 }
 
